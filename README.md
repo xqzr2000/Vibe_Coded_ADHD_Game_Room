@@ -37,9 +37,9 @@ It will look something like: `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
 ## Current agents
 
-### Dr. Maple: `agents/dr_maple.py`
+### Dr. Maple: `server/agents/doctor.js`
 
-Dr. Maple's mission is simple: **run the screening conversation.** (Default model: `openrouter/free`.)
+Dr. Maple's mission is simple: **run the screening conversation.** (Default model: `anthropic/claude-sonnet-4`, also try `openrouter/free`.)
 
 She opens the conversation and drives it through a six-stage plan: orient → attention → organization → restlessness → history → next steps. 
 
@@ -51,9 +51,9 @@ Along the way she:
 - suggests games from the shared library;
 - reads long-term memory so returning sessions pick up where you left off.
 
-### Scout: `agents/scout.py`
+### Scout: `server/agents/researcher.js`
 
-Scout takes the background role. (Default model: `openrouter/free` + OpenRouter `:online` web search.) 
+Scout takes the background role. (Default model: `openai/gpt-4o-mini` + OpenRouter `:online` web search; also try `openrouter/free` + OpenRouter `:online` web search) 
 
 Scout:
 
