@@ -1,6 +1,6 @@
 # Vibe_Coded_ADHD_Game_Room
 
-A small multi-agent chat room to **screen** for ADHD and recommend therapeutic games like **EndeavorOTC (for adults 18+)**. Inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s single-operator gateway, agents, and workspace-files architecture, this project is built as a single, lightweight Node.js app designed to **run on GitHub Codespaces in just one click**.
+A small multi-agent chat room to **screen** for ADHD and recommend therapeutic games like **EndeavorOTC (for adults 18+)**. Inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s single-operator gateway, agents, and workspace-files architecture, this project is built as a single, lightweight Node.js app designed to **run on GitHub Codespaces in just one click**. (And now it's Android App ready. )
 
 > **Important framing:** this is a screening and education tool, **not** a diagnostic or prescribing system. No AI can diagnose ADHD; The agent, Dr. Maple's prompt explicitly keeps it to screening-style conversation and always points to licensed clinicians for evaluation. Note also that **EndeavorRx (ages 8–17) is prescription-only**; the app can refer to it, but a real prescriber has to be involved. **EndeavorOTC (adults 18+)** is available over the counter.
 
@@ -12,26 +12,30 @@ Vibe_Coded_ADHD_Game_Room launches the first Node.js app with a web interface in
 
 *This series is based on memos from brainstorming sessions with Wael.*
 
-## Codespaces Quick Start: `npm start`
+---
 
-### Step 0: Fork or clone this repository to GitHub.
+## Codespaces Quick Start 
 
-### Step 1: Set up the OpenRouter API Key in GitHub Codespaces
+Ready when you are!
 
-**OpenRouter account → API key → GitHub Codespaces Secret → Environment variable → Your code**
+1. Fork or clone this repository. Give me a GitHub Star.
+2. Click **Code** → **Codespaces** → **Create codespace on main** → (a few moments later...) **Trust the folder and Continue**.
+3. Port 3000 auto-starts and opens the Focus Room preview automatically. You can also open that URL in a new Tab.
+4. Sign in with **OpenRouter** and chat.
 
-1. Sign up for free on [OpenRouter](https://openrouter.ai/).
-2. Go to **Keys** / **API Keys**, then click **Create Key** with the name `github-codespace`.
-It will look something like: `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
-3. In your GitHub repository, navigate to **Settings** → **Secrets and variables** → **Codespaces** choose this repo → **Codespaces secrets** → **New secret**.
-4. Set the **Name** to: `OPENROUTER_API_KEY`
-5. Paste your OpenRouter key into the **Value** field and click **Add secret**.
+### OpenRouter sign-in gate: bring your own key (BYOK)
 
-### Step 2: Spin Up the Codespace
+The room stays locked until **your browser** holds an API key. 
 
-1. Click **Code** → **Codespaces** → **Create codespace on main**.
-2. In the Codespace terminal, run: `npm start`.
-3. Codespaces forwards port 3000 and opens a preview automatically. Chat away.
+Luckily, OpenRouter offers it for free.
+
+**Sign in:** click **Connect OpenRouter** (`OAuth PKCE`, `S256`). OpenRouter redirects back with a one-time code, and your browser exchanges it for a user-controlled API key stored locally.
+
+**No information leaves your browser,** because you host the backend. Returning users get a fresh key without touching existing ones.
+
+**Extras:** the ⚙ drawer shows usage/limits, owner-only key links, and accepts optional free backup keys (OpenRouter, Groq, Gemini are free, and Deepseek is really cheap) for independent fallback routes. All stored in-browser.
+
+**Enforcement:** the gate is also enforced over WebSocket, and a rejected key (`bad_key`) is cleared automatically, reopening the gate.
 
 ---
 
@@ -39,7 +43,7 @@ It will look something like: `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 
 ### Dr. Maple: `server/agents/doctor.js`
 
-Dr. Maple's mission is simple: **run the screening conversation.** (Default model: `anthropic/claude-sonnet-4`, also try `openrouter/free`.)
+Dr. Maple's mission is simple: **run the screening conversation.**
 
 She opens the conversation and drives it through a six-stage plan: orient → attention → organization → restlessness → history → next steps. 
 
@@ -53,20 +57,41 @@ Along the way she:
 
 ### Scout: `server/agents/researcher.js`
 
-Scout takes the background role. (Default model: `openai/gpt-4o-mini` + OpenRouter `:online` web search; also try `openrouter/free` + OpenRouter `:online` web search) 
+Scout is the research agent. 
 
-Scout:
+She investigates evidence-based attention-training games, assessment pathways, pricing, and insurance coverage. Findings are persisted to shared JSON memory, and Scout can generate a neutral, clinician-ready PDF session statement on demand.
 
-- watches the conversation silently and reacts when something searchable comes up;
-- web-searches for EndeavorRx / EndeavorOTC and other evidence-based attention-training games;
-- fetches the official pages it found and runs an enrich pass (pricing, platforms, prescription requirements) before saving anything;
-- saves enriched game data to local storage (`data/games.json`);
-- writes session summaries to long-term memory (`data/memories.json`);
-- on request or at session end, produces a professional statement you can download as a PDF to bring to a clinician.
+#### Background behavior
 
-Tick **Deep search** in the UI to route Scout's research through a real headless browser instead, module forked from [browser-use](https://github.com/browser-use/browser-use).
+Scout runs passively alongside the conversation and activates when she detects something worth researching:
 
-If web search or page fetching blocks the request or changes its HTML, the chat keeps working and Scout receives the search URL plus a clear failure note instead of fabricated results.
+- Monitors the conversation and reacts when a searchable topic comes up
+- Performs web searches for EndeavorRx / EndeavorOTC and other evidence-based attention-training games
+- Fetches the official pages it finds and runs an enrichment pass (pricing, platforms, prescription requirements) before saving anything
+- Saves enriched game data to local storage (`data/games.json`)
+- Writes session summaries to long-term memory (`data/memories.json`)
+- On request, or at session end, produces a professional session statement, downloadable as a PDF to share with a clinician
+
+#### Task capabilities
+
+Scout supports three task types, implemented in `server/agents/scout-tasks.js`. Requests are routed in one of three ways: keyword matching, the background decision call, or explicitly via the buttons under the composer.
+
+| Task | Triggered by | Output |
+|---|---|---|
+| **games** | Default; e.g. "what else is there", "apps like X" | Library entries: target audience, access requirements, platform, evidence base, official URL |
+| **clinicians** | "Find how to get assessed" button; e.g. "who can diagnose me", "waitlist", "referral" | Assessment routes in your area (public and private), searchable professional registers, typical costs and wait times, and suggested questions to ask when booking |
+| **deals** | "Check prices & coverage" button; e.g. "how much", "insurance", "discount" | Current list prices, free trials, and coverage details (insurance, FSA/HSA, funding programs), written back into the library so Dr. Maple can quote them |
+
+Scout gathers and organizes the information; the final decision always stays with you.
+
+#### Deep search (experimental)
+
+Enable **Deep search** in the UI to route Scout's research through a real headless browser instead of standard web search. This module is forked from [browser-use](https://github.com/browser-use/browser-use).
+
+> ⚠️ **Experimental:** Deep search currently has a loooong startup time and is still under active development. Standard search is recommended for now.
+
+If web search or page fetching fails, whether due to blocked requests or unexpected HTML changes, the chat continues to work normally. Scout receives the attempted search URL along with an explicit failure note, ensuring her never fabricates results.
+
 
 ---
 
@@ -95,10 +120,75 @@ Click **Write statement (PDF)** any time, or **End session & save memory** (whic
 
 Scout re-reads the conversation and produces a neutral, third-person write-up: purpose, summary, reported experiences, areas discussed, resources reviewed, next steps, and questions to ask a clinician, then a download card appears under the chat.
 
-Rendering is `server/report.js` using [pdfkit](https://pdfkit.org): pure JS, streamed straight to the HTTP response, nothing written to disk. Statements live in memory keyed by id and disappear on restart, so no transcript-derived documents are persisted to the repo. The statement's language is constrained by prompt: it describes only what was reported and never asserts a diagnosis, and every PDF carries a disclaimer footer.
+Rendering is `server/report.js` using [pdfkit](https://pdfkit.org): pure JS, streamed straight to the HTTP response, nothing written to disk. 
+
+Statements live in memory keyed by id and disappear on restart, so no transcript-derived documents are persisted to the repo. The statement's language is constrained by prompt: it describes only what was reported and never asserts a diagnosis, and every PDF carries a disclaimer footer.
+
+---
+
+## Token Scavenger
+
+New OpenRouter accounts usually start with a small free credit. That credit is enough to run stronger models, such as Claude; these models will power Dr. Maple's conversation, and Scout’s web search for a while. However, once the free credit runs out, the agents may slow down, lose access to stronger models, or stop responding if no usable free model is available.
+
+**Token Scavenger** is the project’s automatic fallback system for handling this problem. Instead of asking users to edit configuration files or manually switch models, the app quietly looks for another usable model in the background and keeps the conversation moving.
+
+### Automatic model fallback
+
+When a model call fails for a recoverable reason, the agent walks through a fallback chain:
+
+```text
+your selected model
+→ other free models on the same provider
+→ free models on any other provider you have a key for
+→ live discovery from the provider catalogue
+→ use the best available free model found
+
+Or, ideally, BYOK (Bring Your Own Key)
+→ the user provides an API key and selects their preferred model
+
+```
 
 ---
 
 ## Repository layout
 
-To add later
+```
+focus-room/
+├── server/                  ← the app
+│   ├── index.js                 orchestrator: HTTP + WebSocket + turn-taking
+│   ├── config.js                per-session settings & key resolution
+│   ├── providers.js             registry: OpenRouter / Groq / Gemini / custom
+│   ├── llm.js                   one chat client + error classification
+│   ├── fallback.js              automatic route switching, circuit breaking
+│   ├── safety.js                deterministic crisis detection
+│   ├── fetcher.js               lightweight page → text
+│   ├── store.js                 JSON persistence (games, memories)
+│   ├── report.js                PDF rendering
+│   ├── diagnose.js              "why aren't the agents responding?"
+│   └── agents/
+│       ├── registry.js          agent list / extension point
+│       ├── doctor.js            Dr. Maple — conversation lead
+│       ├── researcher.js        Scout — background research pipeline
+│       └── scout-tasks.js       what Scout can research
+├── public/index.html        ← the entire frontend, one file
+├── browser-service/         ← optional Python sidecar (deep search)
+│   ├── app.py                   FastAPI wrapper around browser-use
+│   └── requirements.txt
+├── data/                    ← human-readable state on disk
+│   ├── games.json               Scout's findings
+│   └── memories.json            long-term memory
+├── .devcontainer/           ← Codespaces boot
+│   ├── devcontainer.json        image, ports, secrets
+│   ├── setup.sh                 create-time: npm install
+│   ├── on-attach.sh             attach-time: start the app
+│   ├── devcontainer.minimal.json  recovery fallback
+│   └── README.md
+├── scripts/stop.sh          ← PID-based shutdown
+├── tests/run.mjs            ← 57 assertions, no network
+├── setup-browser-service.sh ← installs the Python sidecar on demand
+├── package.json
+├── .env.example
+├── README.md
+
+
+```
