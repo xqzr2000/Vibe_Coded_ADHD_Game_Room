@@ -1,4 +1,0 @@
-browser-use==0.13.7
-fastapi>=0.111
-uvicorn>=0.30
-python-dotenv>=1.0
