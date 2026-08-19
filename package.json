@@ -1,0 +1,26 @@
+{
+  "name": "focus-room",
+  "version": "0.1.0",
+  "description": "A multi-agent chat room (OpenClaw-inspired) for ADHD screening conversations and EndeavorRx game research, powered by OpenRouter.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "browser": "browser-service/.venv/bin/uvicorn app:app --app-dir browser-service --host 127.0.0.1 --port 8010",
+    "setup:browser": "bash setup-browser-service.sh",
+    "stop": "bash scripts/stop.sh",
+    "restart": "bash scripts/stop.sh && npm start",
+    "test": "node tests/run.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pdfkit": "^0.15.0",
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

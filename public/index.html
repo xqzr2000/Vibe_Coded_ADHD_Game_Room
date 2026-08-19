@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #f5f8f6;
+    --panel: #eaf0ed;
+    --ink: #17221e;
+    --ink-soft: #55635d;
+    --line: #d4ddd8;
+    --doctor: #0e7f74;
+    --doctor-soft: #dcefec;
+    --researcher: #a4551e;
+    --researcher-soft: #f4e5d8;
+    --user: #17221e;
+    --radius: 14px;
+    --display: "Bricolage Grotesque", sans-serif;
+    --body: "Instrument Sans", system-ui, sans-serif;
+    --mono: "Spline Sans Mono", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--body);
+    background: var(--paper);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- header / presence rail ---------- */
+  header {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  .brand small { display: block; font-family: var(--body); font-weight: 500; font-size: .72rem; color: var(--ink-soft); letter-spacing: .02em; }
+  .presence { display: flex; gap: .5rem; margin-left: auto; flex-wrap: wrap; }
+  .chip {
+    display: flex; align-items: center; gap: .45rem;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: .3rem .7rem .3rem .45rem; font-size: .8rem; background: #fff;
+  }
+  .chip .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--c, #999); }
+  .chip.active .dot { animation: pulse 1.1s ease-in-out infinite; }
+  .chip .state { color: var(--ink-soft); font-size: .72rem; font-family: var(--mono); }
+  .chip .model {
+    color: var(--ink-soft); font-size: .68rem; font-family: var(--mono);
+    max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    border-left: 1px solid var(--line); padding-left: .4rem;
+  }
+  .chip.problem { border-color: #e2b4a4; background: #fbe9e4; }
+  .chip .model.warn { color: #8f3721; }
+  .chip.switched { animation: flash 1.6s ease-out; }
+  @keyframes flash {
+    0% { background: var(--doctor-soft); border-color: var(--doctor); }
+    100% { background: #fff; border-color: var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) { .chip.switched { animation: none; } }
+  .connstate { font-size: .7rem; font-family: var(--mono); }
+  .connstate.connecting { color: #a4551e; }
+  .connstate.offline { color: #b5462f; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.5); opacity: .55 } }
+  @media (prefers-reduced-motion: reduce) { .chip.active .dot { animation: none; } }
+
+  /* ---------- layout ---------- */
+  main { flex: 1; display: flex; min-height: 0; }
+  .chat-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  aside {
+    width: 320px; border-left: 1px solid var(--line);
+    background: var(--panel); overflow-y: auto; padding: 1rem;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  @media (max-width: 860px) {
+    aside { display: none; position: fixed; inset: 3.4rem 0 0 auto; width: min(320px, 88vw); z-index: 20; box-shadow: -12px 0 30px rgba(0,0,0,.12); }
+    aside.open { display: flex; }
+  }
+  .aside-toggle { display: none; margin-left: .5rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .35rem .6rem; font-family: var(--body); cursor: pointer; }
+  @media (max-width: 860px) { .aside-toggle { display: inline-block; } }
+
+  /* ---------- messages ---------- */
+  #log { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: .9rem; }
+  .msg { max-width: 46rem; display: flex; gap: .65rem; }
+  .msg .avatar {
+    flex: 0 0 2rem; height: 2rem; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    font-family: var(--display); font-weight: 800; font-size: .8rem;
+  }
+  .msg .bubble { border-radius: var(--radius); padding: .65rem .85rem; line-height: 1.5; font-size: .95rem; white-space: pre-wrap; }
+  .msg .who { font-size: .72rem; color: var(--ink-soft); margin-bottom: .2rem; font-family: var(--mono); }
+  .msg.doctor .avatar { background: var(--doctor); }
+  .msg.doctor .bubble { background: var(--doctor-soft); border-top-left-radius: 4px; }
+  .msg.scout .avatar { background: var(--researcher); }
+  .msg.scout .bubble { background: var(--researcher-soft); border-top-left-radius: 4px; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.user .avatar { background: var(--user); }
+  .msg.user .bubble { background: var(--ink); color: var(--paper); border-top-right-radius: 4px; }
+  .msg.system { align-self: center; }
+  .msg.system .bubble { background: transparent; color: var(--ink-soft); font-size: .8rem; border: 1px dashed var(--line); }
+
+  /* ---------- composer ---------- */
+  .composer { border-top: 1px solid var(--line); padding: .8rem 1.25rem 1rem; }
+  .composer form { display: flex; gap: .6rem; }
+  .composer textarea {
+    flex: 1; resize: none; font: inherit; font-size: .95rem;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: .65rem .85rem; background: #fff; min-height: 2.9rem; max-height: 9rem;
+  }
+  .composer textarea:focus { outline: 2px solid var(--doctor); outline-offset: 1px; }
+  button.primary {
+    border: 0; border-radius: var(--radius); padding: 0 1.2rem;
+    background: var(--ink); color: var(--paper); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  .composer .row2 { display: flex; justify-content: space-between; align-items: center; margin-top: .5rem; gap: .8rem; }
+  .disclaimer { font-size: .72rem; color: var(--ink-soft); }
+  .ghost { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: .3rem .8rem; font-size: .78rem; cursor: pointer; font-family: var(--body); }
+  .ghost:hover { border-color: var(--ink-soft); }
+  .deep {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--line); border-radius: 999px; background: #fff;
+    padding: .3rem .8rem; font-size: .78rem; cursor: pointer; user-select: none;
+  }
+  .deep input { accent-color: var(--researcher); cursor: pointer; }
+  .deep.on { border-color: var(--researcher); background: var(--researcher-soft); color: var(--researcher); }
+  .deep .stat { font-family: var(--mono); font-size: .65rem; opacity: .75; }
+
+  /* ---------- sidebar panels ---------- */
+  .panel h2 { font-family: var(--display); font-size: .95rem; font-weight: 800; display: flex; align-items: baseline; gap: .4rem; }
+  .panel h2 .count { font-family: var(--mono); font-size: .72rem; color: var(--ink-soft); font-weight: 400; }
+  .panel .hint { font-size: .78rem; color: var(--ink-soft); margin-top: .25rem; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: .6rem .7rem; margin-top: .6rem; font-size: .82rem; line-height: 1.45;
+  }
+  .card .name { font-weight: 600; }
+  .card .meta { font-family: var(--mono); font-size: .68rem; color: var(--ink-soft); margin: .15rem 0 .25rem; }
+  .card a { color: var(--doctor); word-break: break-all; }
+  .tag { display: inline-block; border-radius: 4px; padding: .05rem .35rem; font-size: .65rem; font-family: var(--mono); background: var(--doctor-soft); color: var(--doctor); margin-left: .3rem; vertical-align: middle; }
+  .tag.rx { background: var(--researcher-soft); color: var(--researcher); }
+  .report {
+    display: flex; align-items: center; gap: .7rem;
+    border: 1px solid var(--doctor); background: var(--doctor-soft);
+    border-radius: var(--radius); padding: .7rem .85rem; margin: 0 1.25rem .2rem;
+  }
+  .report .icon { font-size: 1.3rem; }
+  .report .txt { flex: 1; font-size: .84rem; line-height: 1.4; }
+  .report .txt strong { display: block; font-family: var(--display); font-size: .92rem; }
+  .report a.dl {
+    background: var(--doctor); color: #fff; text-decoration: none;
+    border-radius: 999px; padding: .4rem .9rem; font-size: .82rem; font-weight: 600; white-space: nowrap;
+  }
+  .report a.dl:hover { filter: brightness(1.1); }
+
+  /* --- model chip in the header --- */
+  .modelchip {
+    display: flex; align-items: center; gap: .4rem; border: 1px solid var(--line);
+    border-radius: 999px; padding: .3rem .7rem; font-size: .78rem; background: #fff; cursor: pointer;
+  }
+  .modelchip:hover { border-color: var(--ink-soft); }
+  .modelchip .m { font-family: var(--mono); font-size: .7rem; color: var(--ink-soft); }
+  .modelchip.warn { border-color: #b5462f; background: #fbe9e4; color: #8f3721; }
+
+  /* --- alert banner (out of credits, bad key, …) --- */
+  .alert {
+    margin: 0 1.25rem .6rem; border-radius: var(--radius); padding: .75rem .9rem;
+    background: #fbe9e4; border: 1px solid #e2b4a4; color: #7d3320; font-size: .86rem; line-height: 1.45;
+  }
+  .alert strong { font-family: var(--display); display: block; font-size: .95rem; margin-bottom: .1rem; }
+  .alert .acts { margin-top: .55rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+  .alert button {
+    border: 0; border-radius: 999px; padding: .4rem .9rem; font: inherit; font-size: .82rem;
+    font-weight: 600; cursor: pointer; background: #8f3721; color: #fff;
+  }
+  .alert button.sec { background: #fff; color: #7d3320; border: 1px solid #e2b4a4; }
+  .alert.info { background: var(--doctor-soft); border-color: #9ecdc6; color: #0b5f57; }
+  .alert.info button { background: var(--doctor); }
+  .alert.info button.sec { background: #fff; color: #0b5f57; border: 1px solid #9ecdc6; }
+  .toggle { display: flex; align-items: flex-start; gap: .5rem; margin: .5rem 0; font-size: .84rem; }
+  .toggle input { width: auto; margin-top: .15rem; accent-color: var(--doctor); }
+  .toggle .t { font-size: .78rem; color: var(--ink-soft); display: block; }
+
+  /* --- settings drawer --- */
+  .backdrop { position: fixed; inset: 0; background: rgba(15,25,20,.35); z-index: 50; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw);
+    background: var(--paper); z-index: 51; overflow-y: auto; padding: 1.25rem;
+    box-shadow: -18px 0 40px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 1.1rem;
+  }
+  .drawer h2 { font-family: var(--display); font-size: 1.1rem; font-weight: 800; }
+  .drawer h3 { font-family: var(--display); font-size: .9rem; font-weight: 800; margin-bottom: .35rem; }
+  .drawer .close { position: absolute; top: 1rem; right: 1rem; border: 0; background: none; font-size: 1.3rem; cursor: pointer; color: var(--ink-soft); }
+  .drawer label { display: block; font-size: .8rem; color: var(--ink-soft); margin: .5rem 0 .2rem; }
+  .drawer select, .drawer input {
+    width: 100%; font: inherit; font-size: .88rem; padding: .5rem .6rem;
+    border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink);
+  }
+  .drawer .fieldnote { font-size: .74rem; color: var(--ink-soft); margin-top: .25rem; line-height: 1.4; }
+  .drawer .fieldnote a { color: var(--doctor); }
+  .preset {
+    display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: #fff;
+    border-radius: 10px; padding: .6rem .7rem; margin-bottom: .45rem; cursor: pointer; font: inherit;
+  }
+  .preset:hover { border-color: var(--doctor); }
+  .preset strong { display: block; font-size: .87rem; }
+  .preset span { font-size: .76rem; color: var(--ink-soft); }
+  .preset .badge { display: inline-block; background: var(--doctor-soft); color: var(--doctor); border-radius: 4px; font-size: .64rem; font-family: var(--mono); padding: .05rem .3rem; margin-left: .3rem; }
+  .agentbox { border: 1px solid var(--line); border-radius: 10px; padding: .7rem; background: #fff; margin-bottom: .6rem; }
+  .agentbox .who2 { font-family: var(--mono); font-size: .7rem; color: var(--ink-soft); }
+  .savebar { display: flex; gap: .5rem; position: sticky; bottom: 0; background: var(--paper); padding-top: .6rem; }
+  .savebar button { flex: 1; border: 0; border-radius: 10px; padding: .6rem; font: inherit; font-weight: 600; cursor: pointer; background: var(--ink); color: var(--paper); }
+  .savebar button.sec { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .checks { margin-top: .6rem; display: flex; flex-direction: column; gap: .4rem; }
+  .checkrow {
+    display: flex; gap: .5rem; align-items: flex-start; font-size: .8rem; line-height: 1.4;
+    background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: .5rem .6rem;
+  }
+  .checkrow .mark { flex: 0 0 1.1rem; font-weight: 700; }
+  .checkrow.ok .mark { color: var(--doctor); }
+  .checkrow.fail .mark { color: #b5462f; }
+  .checkrow.warn .mark { color: #a4551e; }
+  .checkrow.skip { opacity: .7; }
+  .checkrow .lbl { font-weight: 600; display: block; }
+  .checkrow .hint { display: block; color: var(--ink-soft); font-size: .74rem; margin-top: .2rem; }
+  .checksummary {
+    font-size: .82rem; line-height: 1.45; border-radius: 9px; padding: .55rem .7rem;
+    background: var(--doctor-soft); color: #0b5f57; margin-top: .5rem;
+  }
+  .checksummary.bad { background: #fbe9e4; color: #7d3320; }
+  .privacy { font-size: .74rem; color: var(--ink-soft); background: var(--panel); border-radius: 9px; padding: .6rem .7rem; line-height: 1.45; }
+  .row { display: flex; gap: .5rem; align-items: center; }
+  .row > * { flex: 1; }
+  .row .mini { flex: 0 0 auto; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .45rem .7rem; font-size: .78rem; cursor: pointer; font-family: var(--body); }
+  /* --- sign-in gate --- */
+  /* Sits over the whole app until the browser holds a key. The room stays
+     visible but blurred behind it: a preview, not a blank wall. */
+  .gate { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+          background: color-mix(in srgb, var(--paper) 55%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+  .gatecard { width: min(430px, calc(100vw - 2rem)); background: #fff; border: 1px solid var(--line); border-radius: 16px;
+              padding: 1.6rem 1.5rem 1.3rem; box-shadow: 0 18px 50px rgba(0,0,0,.14); }
+  .gatecard h2 { font-family: var(--display); font-size: 1.25rem; font-weight: 800; margin-bottom: .35rem; }
+  .gatecard p { font-size: .86rem; color: var(--ink-soft); line-height: 1.5; margin-bottom: .9rem; }
+  .gatecard .cta { width: 100%; border: 0; border-radius: 11px; padding: .75rem 1rem; font: inherit; font-weight: 700;
+                   cursor: pointer; background: var(--ink); color: var(--paper); }
+  .gatecard .cta:disabled { opacity: .55; cursor: default; }
+  .gatecard .alt { display: block; text-align: center; margin-top: .8rem; font-size: .78rem; color: var(--ink-soft);
+                   background: none; border: 0; cursor: pointer; text-decoration: underline; width: 100%; font-family: var(--body); }
+  .gatecard .gatenote { font-size: .74rem; color: var(--ink-soft); margin: .9rem 0 0; line-height: 1.45;
+                        background: var(--panel); border-radius: 9px; padding: .55rem .7rem; }
+  .gatecard .gatestatus { font-size: .78rem; margin-top: .7rem; min-height: 1.1em; text-align: center; }
+  .gatecard .gatestatus.err { color: #a3372c; }
+  .gate[hidden] { display: none !important; }
+  /* An author `display` rule overrides the browser's [hidden] rule, so state
+     these explicitly — without them the drawer can never be hidden. */
+  .drawer[hidden], .backdrop[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Focus&nbsp;Room<small>screening conversation &amp; game research — two agents, one chat</small></div>
+  <div class="presence" id="presence"></div>
+  <span class="connstate" id="connState"></span>
+  <button class="modelchip" id="modelChip" title="Change provider, model, or API key">⚙ <span class="m" id="modelChipText">loading…</span></button>
+  <button class="aside-toggle" id="asideToggle" aria-label="Toggle library panel">Library</button>
+</header>
+
+<main>
+  <div class="chat-col">
+    <div id="log" aria-live="polite"></div>
+    <div id="reportSlot"></div>
+    <div class="composer">
+      <form id="form">
+        <textarea id="input" rows="1" placeholder="Say hello, or describe what's been hard to focus on lately…" autofocus></textarea>
+        <button class="primary" id="send" type="submit">Send</button>
+      </form>
+      <div class="row2">
+        <span class="disclaimer">AI screening companion — not a medical diagnosis. For an evaluation, see a licensed clinician.</span>
+        <span>
+          <label class="deep" id="deepLabel" title="Scout uses the browser-use sidecar: a real headless browser that opens pages and reads current details (pricing, availability). Slower; requires 'npm run browser' in a second terminal. Falls back to standard search if the sidecar isn't running.">
+            <input type="checkbox" id="deepMode" /> Deep search <span class="stat" id="deepStat"></span>
+          </label>
+          <button class="ghost" id="askClinician" type="button">Find how to get assessed</button>
+          <button class="ghost" id="askDeals" type="button">Check prices &amp; coverage</button>
+          <button class="ghost" id="askScout" type="button">Ask Scout…</button>
+          <button class="ghost" id="statement" type="button">Write statement (PDF)</button>
+          <button class="ghost" id="endSession" type="button">End session &amp; save memory</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <aside id="aside">
+    <section class="panel">
+      <h2>Game library <span class="count" id="gameCount">0</span></h2>
+      <p class="hint">Saved locally by Scout from web research. Dr. Maple draws suggestions from here.</p>
+      <div id="games"></div>
+    </section>
+    <section class="panel">
+      <h2>Long-term memory <span class="count" id="memCount">0</span></h2>
+      <p class="hint">Session summaries Scout writes so future conversations pick up where you left off.</p>
+      <div id="memories"></div>
+    </section>
+  </aside>
+</main>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<div class="gate" id="gate" hidden role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="gatecard">
+    <h2>Welcome to Focus&nbsp;Room</h2>
+    <p id="gateBlurb">Sign in with OpenRouter to power Dr.&nbsp;Maple and Scout with your own account. New to OpenRouter? The next screen lets you sign up with Google in one step.</p>
+    <button class="cta" id="gateSignin">Sign in with OpenRouter</button>
+    <div class="gatestatus" id="gateStatus"></div>
+    <button class="alt" id="gateManual" type="button">I already have an API key</button>
+    <p class="gatenote">Already used OpenRouter before? Same button — you'll just approve access, and a fresh key is created for this app. Your key stays in this browser, is never written to disk on the server, and you can revoke it on OpenRouter at any time.</p>
+  </div>
+</div>
+
+<div class="drawer" id="drawer" hidden role="dialog" aria-label="Model settings">
+  <button class="close" id="drawerClose" aria-label="Close">×</button>
+  <div>
+    <h2>Use your own AI account</h2>
+    <p class="fieldnote">Focus Room runs on free models by default, and switches between them by itself when one is busy or unavailable. If you have your own paid account, add it here for faster, sharper replies.</p>
+  </div>
+
+  <section id="oauthSection" hidden>
+    <h3>OpenRouter sign-in</h3>
+    <p class="fieldnote" id="oauthStatus"></p>
+    <p class="fieldnote"><a id="oauthManage" href="#" target="_blank" rel="noopener">Manage or revoke this key on OpenRouter</a></p>
+    <div class="row">
+      <button class="mini" id="oauthRefresh" type="button">Refresh status</button>
+      <button class="mini" id="oauthSignout" type="button">Sign out</button>
+    </div>
+  </section>
+
+  <section>
+    <label for="ownProvider">Where's your account?</label>
+    <select id="ownProvider"></select>
+    <p class="fieldnote" id="ownProviderNote"></p>
+
+    <label for="ownKey">API key</label>
+    <input type="password" id="ownKey" placeholder="paste your key" autocomplete="off" />
+
+    <label for="ownModel">Model <span style="font-weight:400">(optional)</span></label>
+    <input id="ownModel" list="ownModelList" placeholder="leave blank for a sensible default" />
+    <datalist id="ownModelList"></datalist>
+    <p class="fieldnote"><button class="mini" id="ownLoadModels" type="button">Show available models</button></p>
+  </section>
+
+  <section>
+    <h3>Free backup routes</h3>
+    <p class="fieldnote">Optional, but this is what keeps a conversation moving when one free account hits a quota. Add keys from other free-tier providers; Focus Room only uses them after the active route fails. They stay in this browser just like your primary key.</p>
+
+    <label for="backupOpenRouter">OpenRouter backup key</label>
+    <input type="password" id="backupOpenRouter" placeholder="sk-or-…" autocomplete="off" />
+
+    <label for="backupGroq">Groq backup key</label>
+    <input type="password" id="backupGroq" placeholder="gsk_…" autocomplete="off" />
+
+    <label for="backupGemini">Gemini backup key</label>
+    <input type="password" id="backupGemini" placeholder="AIza…" autocomplete="off" />
+    <p class="fieldnote">The primary key wins when the same provider appears in both places. Backup routes stay free-only unless you explicitly set a paid primary account above.</p>
+  </section>
+
+  <section>
+    <h3>Something not working?</h3>
+    <p class="fieldnote">Checks your key, what credit is left, and whether the models actually respond right now.</p>
+    <button class="mini" id="runCheck" type="button">Check my access</button>
+    <div class="checks" id="checkResults"></div>
+  </section>
+
+  <section>
+    <div class="privacy">
+      Your keys stay in this browser and are sent to this app only to make your own API calls. They are never written to disk on the server. Don't paste keys into a Focus Room you don't control.
+    </div>
+  </section>
+
+  <div class="savebar">
+    <button class="sec" id="ownClear">Remove</button>
+    <button id="ownSave">Save</button>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const log = $("log"), presence = $("presence");
+  let agents = [];
+
+  // ---- WebSocket ---------------------------------------------------------
+  // Reconnects on its own and resumes the same room by session id, so a
+  // sleeping laptop, an idle-timed-out forwarded port, or a page refresh
+  // doesn't cost you the conversation.
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const SESSION_ID_KEY = "focusroom.sessionId";
+  let ws = null;
+  let reconnectAttempt = 0;
+  let reconnectTimer = null;
+  let everConnected = false;
+
+  const sessionId = () => sessionStorage.getItem(SESSION_ID_KEY) || "";
+
+  function setConnState(state) {
+    const el = $("connState");
+    if (!el) return;
+    el.textContent = state === "online" ? "" : state === "connecting" ? "reconnecting…" : "offline";
+    el.className = "connstate " + state;
+  }
+
+  function connect() {
+    clearTimeout(reconnectTimer);
+    setConnState(everConnected ? "connecting" : "online");
+
+    const id = sessionId();
+    ws = new WebSocket(`${proto}://${location.host}${id ? `?session=${encodeURIComponent(id)}` : ""}`);
+
+    ws.addEventListener("open", () => {
+      reconnectAttempt = 0;
+      everConnected = true;
+      setConnState("online");
+    });
+
+    ws.addEventListener("close", () => {
+      setConnState("offline");
+      // Exponential backoff, capped — retries quietly rather than telling the
+      // user to refresh.
+      reconnectAttempt += 1;
+      const delay = Math.min(1000 * 2 ** (reconnectAttempt - 1), 15000);
+      setConnState("connecting");
+      reconnectTimer = setTimeout(connect, delay);
+    });
+
+    ws.addEventListener("error", () => {
+      try { ws.close(); } catch { /* close() triggers the retry above */ }
+    });
+
+    ws.addEventListener("message", onMessage);
+  }
+
+  // Reconnect immediately when the tab comes back or the network returns,
+  // instead of waiting out the backoff timer.
+  const nudge = () => {
+    if (!ws || ws.readyState === WebSocket.CLOSED) { reconnectAttempt = 0; connect(); }
+  };
+  window.addEventListener("online", nudge);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) nudge(); });
+
+  function onMessage(ev) {
+    const msg = JSON.parse(ev.data);
+    switch (msg.type) {
+      case "hello":
+        agents = msg.agents;
+        if (msg.sessionId) sessionStorage.setItem(SESSION_ID_KEY, msg.sessionId);
+        renderGames(msg.games);
+        renderMemories(msg.memories);
+        initConfig(msg.config);
+        // Rebuild the room from the server's transcript. Covers both a fresh
+        // page load and a reconnect where the DOM already has these messages.
+        if (Array.isArray(msg.transcript) && msg.transcript.length) {
+          if (log.dataset.rendered !== "1") {
+            log.innerHTML = "";
+            for (const m of msg.transcript) {
+              if (m.from === "user") addUser(m.text);
+              else addBubble(m.agentId || "doctor", m.agentName || "Agent", m.text);
+            }
+            log.dataset.rendered = "1";
+          }
+        } else if (!msg.resumed && log.dataset.rendered !== "1") {
+          addSystem("Screening-style conversation, not a diagnosis. Dr. Maple will start things off.");
+          log.dataset.rendered = "1";
+        }
+        renderPresence();
+        break;
+      case "agent_message":
+        // Any successful reply means whatever was wrong isn't any more.
+        if (agentProblem[msg.agent]) { delete agentProblem[msg.agent]; renderPresence(); renderModelChip(); }
+        addBubble(msg.agent, msg.name, msg.text);
+        break;
+      case "status": setStatus(msg.agent, msg.state); break;
+      case "games": renderGames(msg.games); break;
+      case "memories": renderMemories(msg.memories); break;
+      case "report_ready": showReport(msg); break;
+      case "config": serverConfig = msg.config; renderModelChip(); renderPresence(); break;
+      case "agent_problem": showAgentProblem(msg); break;
+      case "provider_switch": showProviderSwitch(msg); break;
+      case "error": console.warn(msg.text); break;
+      case "log": console.warn(msg.text); break;
+    }
+  }
+
+  // ---- presence rail
+  const statuses = {};
+  const justSwitched = {}; // agentId -> true, cleared after the flash
+
+  // Each agent shows the model it's actually running on. That's the standing
+  // signal that a switch happened — no popup, but never a silent change either.
+  function modelFor(agentId) {
+    const cfg = serverConfig?.[agentId];
+    if (!cfg) return "";
+    return String(cfg.model || "").split("/").pop(); // trim the vendor prefix
+  }
+
+  function renderPresence() {
+    presence.innerHTML = "";
+    for (const a of agents) {
+      const state = statuses[a.id] || "idle";
+      const model = modelFor(a.id);
+      const problem = agentProblem[a.id];
+
+      const el = document.createElement("span");
+      el.className =
+        "chip" + (state !== "idle" ? " active" : "") +
+        (justSwitched[a.id] ? " switched" : "") + (problem ? " problem" : "");
+      el.style.setProperty("--c", a.color);
+      el.title = problem
+        ? `${a.name}: ${problem.text} ${problem.hint || ""} Click to open settings.`
+        : model
+          ? `${a.name} is using ${serverConfig?.[a.id]?.provider} · ${serverConfig?.[a.id]?.model}. Click to change.`
+          : a.role;
+      el.onclick = openDrawer;
+      el.style.cursor = "pointer";
+
+      const right = problem
+        ? `<span class="model warn">${problem.needsKey ? "needs a key" : "unavailable"}</span>`
+        : model
+          ? `<span class="model">${esc(model)}</span>`
+          : "";
+
+      el.innerHTML =
+        `<span class="dot"></span><span>${esc(a.name)}</span>` +
+        `<span class="state">${state === "idle" ? esc(a.role.toLowerCase()) : esc(state) + "…"}</span>` +
+        right;
+      presence.appendChild(el);
+    }
+    for (const k of Object.keys(justSwitched)) delete justSwitched[k];
+  }
+  function setStatus(agentId, state) { statuses[agentId] = state; renderPresence(); }
+
+  // ---- messages
+  function initials(name) { return name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase(); }
+  function addBubble(agentId, name, text) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + agentId;
+    const av = document.createElement("div"); av.className = "avatar"; av.textContent = initials(name);
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) av.style.background = agent.color;
+    const bubbleWrap = document.createElement("div");
+    const who = document.createElement("div"); who.className = "who"; who.textContent = name;
+    const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+    bubbleWrap.append(who, bubble);
+    wrap.append(av, bubbleWrap);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+  function addUser(text) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg user";
+    wrap.innerHTML = `<div class="avatar">You</div>`;
+    const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+  function addSystem(text) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg system";
+    const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ---- sidebar
+  function renderGames(games = []) {
+    $("gameCount").textContent = games.length;
+    const box = $("games"); box.innerHTML = "";
+    for (const g of games) {
+      const rx = /prescription/i.test(g.access || "");
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        `<div class="name">${esc(g.name)}${g.access ? `<span class="tag ${rx ? "rx" : ""}">${esc(g.access)}</span>` : ""}</div>` +
+        `<div class="meta">${esc([g.audience, g.platform, g.pricing].filter(Boolean).join(" · "))}</div>` +
+        `<div>${esc(g.description || "")}</div>` +
+        (g.evidence ? `<div class="meta">${esc(g.evidence)}</div>` : "") +
+        (g.url ? `<a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.url)}</a>` : "");
+      box.appendChild(card);
+    }
+  }
+  function renderMemories(memories = []) {
+    $("memCount").textContent = memories.length;
+    const box = $("memories"); box.innerHTML = "";
+    for (const m of [...memories].reverse()) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        `<div class="meta">${esc((m.createdAt || "").slice(0, 16).replace("T", " "))}</div>` +
+        `<div>${esc(m.summary || "")}</div>` +
+        (m.followUps?.length ? `<div class="meta">next: ${esc(m.followUps.join("; "))}</div>` : "");
+      box.appendChild(card);
+    }
+  }
+  function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+
+  function showReport(msg) {
+    const when = new Date(msg.generatedAt || Date.now()).toLocaleString();
+    $("reportSlot").innerHTML =
+      `<div class="report">
+         <span class="icon" aria-hidden="true">📄</span>
+         <span class="txt"><strong>Session statement ready</strong>Written by Scout ${esc(when)} — a neutral, professional write-up to bring to a clinician.</span>
+         <a class="dl" href="${esc(msg.url)}" download>Download PDF</a>
+       </div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ---- composer
+  const form = $("form"), input = $("input");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text || ws.readyState !== ws.OPEN) return;
+    addUser(text);
+    ws.send(JSON.stringify({ type: "user_message", text, deep: deepMode.checked }));
+    input.value = "";
+    input.style.height = "auto";
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 144) + "px";
+  });
+
+  $("statement").addEventListener("click", () => {
+    addSystem("Asking Scout to write up this session as a professional statement…");
+    ws.send(JSON.stringify({ type: "request_statement" }));
+  });
+  $("endSession").addEventListener("click", () => {
+    addSystem("Asking Scout to save this session to memory and write your statement…");
+    ws.send(JSON.stringify({ type: "end_session" }));
+  });
+  function askScout(query, task, label) {
+    addUser(label || "(to Scout) " + query);
+    ws.send(JSON.stringify({ type: "request_research", query, task, deep: deepMode.checked }));
+  }
+
+  $("askScout").addEventListener("click", () => {
+    const q = prompt("What should Scout look into?");
+    if (q && q.trim()) askScout(q.trim(), undefined, "(to Scout) " + q.trim());
+  });
+
+  $("askClinician").addEventListener("click", () => {
+    const where = prompt(
+      "Which country or city should I look at? (Health systems differ, so this makes the difference between useful and useless.)"
+    );
+    if (where && where.trim()) {
+      askScout(
+        `How to get an ADHD assessment in ${where.trim()} — routes to care, directories and professional registers, typical costs and waits`,
+        "clinicians",
+        `(to Scout) How do I get assessed in ${where.trim()}?`
+      );
+    }
+  });
+
+  $("askDeals").addEventListener("click", () => {
+    askScout(
+      "Current pricing, trials, discounts and insurance/FSA/HSA coverage for EndeavorOTC and EndeavorRx",
+      "deals",
+      "(to Scout) What do these cost, and is any of it covered?"
+    );
+  });
+  $("asideToggle").addEventListener("click", () => $("aside").classList.toggle("open"));
+
+  // ===================== Your own AI account ===============================
+  // One job: let someone put in their own paid account. Everything else —
+  // which free model is live, switching when one dies — is automatic.
+
+  const OWN_KEY = "focusroom.ownAccount.v1";
+  const BACKUP_KEYS_KEY = "focusroom.backupKeys.v1";
+  let providerMeta = [], serverConfig = null;
+
+  const loadOwn = () => { try { return JSON.parse(localStorage.getItem(OWN_KEY)) || null; } catch { return null; } };
+  const saveOwn = (v) => v ? localStorage.setItem(OWN_KEY, JSON.stringify(v)) : localStorage.removeItem(OWN_KEY);
+  const loadBackups = () => {
+    try { return JSON.parse(localStorage.getItem(BACKUP_KEYS_KEY)) || {}; } catch { return {}; }
+  };
+  const saveBackups = (v) => {
+    const clean = Object.fromEntries(Object.entries(v || {}).filter(([, key]) => String(key || "").trim()));
+    if (Object.keys(clean).length) localStorage.setItem(BACKUP_KEYS_KEY, JSON.stringify(clean));
+    else localStorage.removeItem(BACKUP_KEYS_KEY);
+  };
+  const hasBackups = () => Object.values(loadBackups()).some(Boolean);
+
+  async function loadProviders() {
+    const r = await fetch("/api/providers").then((r) => r.json());
+    providerMeta = r.providers;
+  }
+  const providerById = (id) => providerMeta.find((p) => p.id === id) || providerMeta[0];
+
+  function pushConfig(cfg, { retry = false } = {}) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "set_config", config: { ...cfg, retry } }));
+  }
+
+  // Applying an own account points both agents at it and, since the user chose
+  // to spend on it, allows paid fallback.
+  function configFromAccess(own, backups = loadBackups()) {
+    const keys = { ...backups };
+    if (own?.key) keys[own.provider] = own.key; // primary wins for its provider
+
+    const cfg = {
+      keys,
+      replaceKeys: true,
+      fallback: { auto: true, allowPaid: Boolean(own?.key) },
+    };
+    if (own?.key) {
+      const model = own.model || defaultModelFor(own.provider);
+      cfg.doctor = { provider: own.provider, model };
+      cfg.scout = { provider: own.provider, model };
+      cfg.customBaseUrl = own.baseUrl || "";
+    } else {
+      // Backup-only mode must never inherit a paid model persisted from an
+      // older session. Pick a known free route from the available keys.
+      const freePrimary = keys.openrouter
+        ? { provider: "openrouter", model: "openrouter/free" }
+        : keys.groq
+          ? { provider: "groq", model: "openai/gpt-oss-120b" }
+          : keys.gemini
+            ? { provider: "gemini", model: "gemini-2.5-flash" }
+            : null;
+      if (freePrimary) {
+        cfg.doctor = { ...freePrimary };
+        cfg.scout = { ...freePrimary };
+      }
+    }
+    return cfg;
+  }
+
+  function defaultModelFor(providerId) {
+    return {
+      openrouter: "anthropic/claude-sonnet-4",
+      groq: "openai/gpt-oss-120b",
+      gemini: "gemini-2.5-flash",
+      custom: "gpt-4o-mini",
+    }[providerId] || "";
+  }
+
+  function renderModelChip() {
+    const own = loadOwn();
+    $("modelChipText").textContent = own
+      ? (own.via === "oauth" ? "OpenRouter account" : "your account")
+      : hasBackups() ? "free fallbacks" : "free models";
+    $("modelChip").classList.toggle("warn", agentProblem.doctor?.needsKey || agentProblem.scout?.needsKey);
+  }
+
+  // ---- drawer -------------------------------------------------------------
+  async function openDrawer() {
+    if (!providerMeta.length) {
+      try { await loadProviders(); } catch { return; }
+    }
+    const own = loadOwn() || { provider: "openrouter", key: "", model: "" };
+    const backups = loadBackups();
+
+    const sel = $("ownProvider");
+    sel.innerHTML = providerMeta.map((p) => `<option value="${p.id}">${esc(p.label)}</option>`).join("");
+    sel.value = own.provider;
+    $("ownKey").value = own.key || "";
+    $("ownModel").value = own.model || "";
+    $("backupOpenRouter").value = backups.openrouter || "";
+    $("backupGroq").value = backups.groq || "";
+    $("backupGemini").value = backups.gemini || "";
+    $("ownModel").placeholder = `leave blank for ${defaultModelFor(sel.value)}`;
+    renderProviderNote();
+    sel.onchange = () => {
+      renderProviderNote();
+      $("ownModel").value = "";
+      $("ownModel").placeholder = `leave blank for ${defaultModelFor(sel.value)}`;
+      $("ownModelList").innerHTML = "";
+    };
+
+    $("drawer").hidden = false; $("backdrop").hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function renderProviderNote() {
+    const p = providerById($("ownProvider").value);
+    $("ownProviderNote").innerHTML = p?.keyUrl
+      ? `Get a key at <a href="${esc(p.keyUrl)}" target="_blank" rel="noopener">${esc(p.keyUrl)}</a>.`
+      : "Any endpoint that speaks the OpenAI chat-completions format.";
+  }
+
+  function closeDrawer() {
+    $("drawer").hidden = true; $("backdrop").hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+  $("modelChip").onclick = openDrawer;
+  $("drawerClose").onclick = closeDrawer;
+  $("backdrop").onclick = closeDrawer;
+
+  $("ownSave").onclick = () => {
+    const primary = {
+      provider: $("ownProvider").value,
+      key: $("ownKey").value.trim(),
+      model: $("ownModel").value.trim(),
+    };
+    const own = primary.key ? primary : null;
+    const backups = {
+      openrouter: $("backupOpenRouter").value.trim(),
+      groq: $("backupGroq").value.trim(),
+      gemini: $("backupGemini").value.trim(),
+    };
+    if (!own && !Object.values(backups).some(Boolean)) {
+      addSystem("Add a primary key or at least one free backup key.");
+      return;
+    }
+    saveOwn(own);
+    saveBackups(backups);
+    pushConfig(configFromAccess(own, backups), { retry: true });
+    clearProblems();
+    closeDrawer();
+    renderModelChip();
+  };
+
+  $("ownClear").onclick = () => {
+    saveOwn(null);
+    saveBackups({});
+    pushConfig({
+      doctor: { provider: "openrouter", model: "openrouter/free" },
+      scout: { provider: "openrouter", model: "openrouter/free" },
+      keys: {},
+      replaceKeys: true,
+      fallback: { auto: true, allowPaid: false },
+    });
+    clearProblems();
+    closeDrawer();
+    renderModelChip();
+    addSystem("Back to the default free route. Browser-stored backup keys were removed too.");
+  };
+
+  $("runCheck").onclick = async (e) => {
+    const box = $("checkResults");
+    e.target.textContent = "checking…";
+    box.innerHTML = '<div class="checkrow skip"><span class="mark">·</span><span>Running checks — this makes a couple of small real requests.</span></div>';
+    try {
+      const r = await fetch("/api/diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: $("ownProvider").value,
+          apiKey: $("ownKey").value.trim(),
+          model: $("ownModel").value.trim(),
+        }),
+      }).then((r) => r.json());
+
+      if (r.error) { box.innerHTML = `<div class="checkrow fail"><span class="mark">✕</span><span>${esc(r.error)}</span></div>`; return; }
+
+      const mark = { ok: "✓", fail: "✕", warn: "!", skip: "·" };
+      box.innerHTML =
+        r.checks.map((c) =>
+          `<div class="checkrow ${c.status}">
+             <span class="mark">${mark[c.status] || "·"}</span>
+             <span><span class="lbl">${esc(c.label)}</span>${esc(c.detail || "")}
+             ${c.hint ? `<span class="hint">${esc(c.hint)}</span>` : ""}</span>
+           </div>`).join("") +
+        (r.summary ? `<div class="checksummary ${r.checks.some((c) => c.status === "fail") ? "bad" : ""}">${esc(r.summary)}</div>` : "");
+    } catch (err) {
+      box.innerHTML = `<div class="checkrow fail"><span class="mark">✕</span><span>Couldn't run the check: ${esc(err.message)}</span></div>`;
+    } finally {
+      e.target.textContent = "Check my access";
+    }
+  };
+
+  $("ownLoadModels").onclick = async (e) => {
+    const provider = $("ownProvider").value;
+    const key = $("ownKey").value.trim();
+    e.target.textContent = "loading…";
+    try {
+      const r = await fetch("/api/models", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey: key }),
+      }).then((r) => r.json());
+      if (r.error) { $("ownProviderNote").textContent = r.error; return; }
+      $("ownModelList").innerHTML = r.models.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+      $("ownProviderNote").textContent = `${r.models.length} models available — click the model box to pick one.`;
+    } catch {
+      $("ownProviderNote").textContent = "Couldn't load the model list.";
+    } finally { e.target.textContent = "Show available models"; }
+  };
+
+  // ---- problems: shown on the agent's chip, never in the conversation ------
+  const agentProblem = {};
+
+  function clearProblems() {
+    delete agentProblem.doctor; delete agentProblem.scout;
+    renderPresence(); renderModelChip();
+  }
+
+  function showAgentProblem(msg) {
+    agentProblem[msg.agentId] = msg;
+    renderPresence(); renderModelChip();
+    console.warn(`[focus-room] ${msg.agentId}: ${msg.text} ${msg.hint || ""}`);
+  }
+
+  // A switch is silent; the chip's model label is the record of it.
+  function showProviderSwitch(msg) {
+    if (msg.config) { serverConfig = msg.config; }
+    delete agentProblem[msg.agentId];
+    justSwitched[msg.agentId] = true;
+    renderPresence(); renderModelChip();
+    console.info(`[focus-room] ${msg.agentId} switched to ${msg.label} (${msg.reason})`);
+  }
+
+  // On connect, hand the server whatever key this browser already holds.
+  connect(); // everything the message handler needs is defined above this line
+
+  async function initConfig(cfg) {
+    serverConfig = cfg;
+    if (!providerMeta.length) await loadProviders();
+    renderModelChip();
+    renderPresence();
+    const own = loadOwn();
+    const backups = loadBackups();
+    if (own?.key || Object.values(backups).some(Boolean)) pushConfig(configFromAccess(own, backups));
+    // WebSocket messages are ordered: any restored keys/config above reaches
+    // the server before this handshake, so Dr. Maple never races the browser
+    // and opens with a stale/no-key configuration.
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "client_ready" }));
+  }
+
+
+  const deepMode = $("deepMode"), deepLabel = $("deepLabel"), deepStat = $("deepStat");
+  let deepHintShown = false, deepReady = false;
+
+  // The sidecar installs in the background on first codespace boot, so poll
+  // until it's up rather than making the user guess.
+  async function pollDeep() {
+    let state = null;
+    try {
+      state = await fetch("/health/deep").then((r) => r.json());
+      deepReady = !!state.ready;
+    } catch { deepReady = false; }
+    deepStat.textContent = deepReady
+      ? `ready${state?.version ? ` · ${state.version}` : ""}`
+      : state?.starting
+        ? "starting…"
+        : state?.installed
+          ? "offline"
+          : "setting up…";
+    deepLabel.title = deepReady
+      ? `Deep search is ready${state?.version ? ` (browser-use ${state.version})` : ""}.`
+      : state?.installed
+        ? "Deep search is installed but the sidecar is not answering. Clicking Deep search will try to start it."
+        : "Deep search is still being installed; standard research works meanwhile.";
+    if (!deepReady) setTimeout(pollDeep, 15000);
+  }
+  pollDeep();
+
+  deepMode.addEventListener("change", () => {
+    deepLabel.classList.toggle("on", deepMode.checked);
+    if (deepMode.checked && !deepHintShown) {
+      deepHintShown = true;
+      if (deepReady) {
+        addSystem("Deep search on — Scout will use a real browser for research. Slower, but it reads live pages.");
+      } else {
+        addSystem("Deep search on, but the browser isn't running yet. Starting it now — this takes a few minutes the first time, and Scout uses standard search until it's ready.");
+        fetch("/api/deep/start", { method: "POST" })
+          .then((r) => r.json())
+          .then(() => { deepStat.textContent = "starting…"; setTimeout(pollDeep, 5000); })
+          .catch(() => addSystem("Couldn't start the browser service — run 'npm run setup:browser' in a terminal."));
+      }
+    }
+  });
+
+  // ===================== OpenRouter OAuth (PKCE) ===========================
+  // One button on the gate covers every case:
+  //   * No OpenRouter account → they sign up with Google ON OpenRouter's page,
+  //     which creates the account and authorizes this app in one pass.
+  //   * Existing account (incl. Google sign-ins) → OpenRouter shows only the
+  //     authorize screen and mints a NEW key scoped to this app. Old keys are
+  //     untouched; the drawer links to the key page so they can manage them.
+  // The callback URL is computed at runtime because every Codespace gets a
+  // different forwarded hostname — nothing here may be hardcoded.
+
+  const OAUTH_VERIFIER_KEY = "focusroom.oauth.verifier.v1";
+
+  const b64url = (bytes) =>
+    btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  async function sha256Bytes(text) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  }
+  const sha256Hex = async (text) =>
+    Array.from(await sha256Bytes(text), (b) => b.toString(16).padStart(2, "0")).join("");
+
+  function gateState(kind, text) {
+    const st = $("gateStatus");
+    st.className = "gatestatus" + (kind === "error" ? " err" : "");
+    st.textContent = text || (kind === "connecting" ? "Connecting your account…" : "");
+    $("gateSignin").disabled = kind === "connecting";
+    if (kind === "error") $("gateSignin").textContent = "Try signing in again";
+  }
+
+  async function startOAuth() {
+    // PKCE needs a secure context; Codespaces forwarded URLs and localhost
+    // both qualify. Anything else gets a readable explanation, not a mystery.
+    if (!window.isSecureContext || !crypto.subtle) {
+      gateState("error", "Sign-in needs HTTPS (or localhost). Open the forwarded URL from the Ports tab.");
+      return;
+    }
+    const raw = new Uint8Array(32);
+    crypto.getRandomValues(raw);
+    const verifier = b64url(raw);
+    sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
+    const challenge = b64url(await sha256Bytes(verifier));
+    const callback = location.origin + location.pathname;
+    location.href =
+      "https://openrouter.ai/auth?callback_url=" + encodeURIComponent(callback) +
+      "&code_challenge=" + challenge + "&code_challenge_method=S256";
+  }
+
+  async function completeOAuth(code) {
+    const verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+    renderGate(true);
+    if (!verifier) {
+      gateState("error", "This sign-in was started in a different tab or browser. Start it again from here.");
+      history.replaceState({}, "", location.pathname);
+      return;
+    }
+    gateState("connecting");
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/auth/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: "S256" }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.key) {
+        // Codes are single-use and die after 10 minutes; the fix is always
+        // the same — run the flow again — so say that instead of the status.
+        const why = data?.error?.message || `exchange failed (${r.status})`;
+        throw new Error(`Couldn't finish sign-in (${why}). The code may have expired — try again.`);
+      }
+      sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+      history.replaceState({}, "", location.pathname);
+      saveOwn({ provider: "openrouter", key: data.key, model: "", via: "oauth", connectedAt: Date.now() });
+      pushConfig(configFromAccess(loadOwn()), { retry: true });
+      clearProblems();
+      renderGate();
+      renderModelChip();
+      addSystem("Connected to OpenRouter — the agents are running on your account now.");
+    } catch (err) {
+      gateState("error", err.message);
+    }
+  }
+
+  function signOutOAuth() {
+    saveOwn(null);
+    pushConfig({
+      doctor: { provider: "openrouter", model: "openrouter/free" },
+      scout: { provider: "openrouter", model: "openrouter/free" },
+      keys: {}, replaceKeys: true,
+      fallback: { auto: true, allowPaid: false },
+    });
+    clearProblems();
+    closeDrawer();
+    renderGate();
+    renderModelChip();
+  }
+
+  // Show the gate when this browser holds no key at all; a manually pasted
+  // key (drawer) counts the same as an OAuth one.
+  function renderGate(force) {
+    const own = loadOwn();
+    const show = force === true || !(own?.key || hasBackups());
+    $("gate").hidden = !show;
+    if (!show) gateState("idle");
+  }
+
+  // A dead key (revoked on OpenRouter, or minted in a Codespace that was
+  // deleted) reopens the gate with a reconnect message instead of leaving
+  // silent broken agents. Piggybacks on the server's error classification.
+  const _showAgentProblem = showAgentProblem;
+  showAgentProblem = (msg) => {
+    _showAgentProblem(msg);
+    const own = loadOwn();
+    if (own?.via === "oauth" && msg.needsKey) {
+      $("gateBlurb").textContent =
+        "Your OpenRouter key stopped working — it may have been revoked or removed. Sign in again and a fresh key is created in seconds.";
+      renderGate(true);
+    }
+  };
+
+  // ---- drawer account panel ----
+  async function renderOauthSection() {
+    const own = loadOwn();
+    const sec = $("oauthSection");
+    sec.hidden = !(own?.via === "oauth" && own.key);
+    if (sec.hidden) return;
+    $("oauthStatus").textContent = "Connected. Checking account status…";
+    $("oauthManage").href = "https://openrouter.ai/keys/" + (await sha256Hex(own.key));
+    try {
+      const r = await fetch("/api/openrouter/key-info", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: own.key }),
+      }).then((r) => r.json());
+      if (r.error) {
+        $("oauthStatus").textContent = r.invalid
+          ? "This key is no longer valid — sign out and sign in again."
+          : "Connected, but the status check failed: " + r.error;
+        return;
+      }
+      const spend = r.usage != null ? `$${r.usage.toFixed(2)} used` : "usage unknown";
+      const cap = r.limit != null ? ` of a $${r.limit.toFixed(2)} limit` : "";
+      $("oauthStatus").textContent =
+        `Connected${r.label ? ` as “${r.label}”` : ""} · ${spend}${cap}${r.freeTier ? " · free tier" : ""}.`;
+    } catch {
+      $("oauthStatus").textContent = "Connected. (Couldn't reach OpenRouter for usage just now.)";
+    }
+  }
+
+  const GATE_BLURB_DEFAULT = $("gateBlurb").textContent;
+
+  // If someone opens the drawer from the gate ("I already have an API key")
+  // and closes it without saving anything, the gate comes back — the room
+  // stays locked until this browser actually holds a key.
+  const _closeDrawer = closeDrawer;
+  closeDrawer = () => { _closeDrawer(); renderGate(); };
+  // The X and backdrop captured the original function when their onclick was
+  // assigned; point them at the wrapped version.
+  $("drawerClose").onclick = closeDrawer;
+  $("backdrop").onclick = closeDrawer;
+
+  $("gateSignin").onclick = () => { $("gateBlurb").textContent = GATE_BLURB_DEFAULT; startOAuth(); };
+  $("gateManual").onclick = () => { $("gate").hidden = true; openDrawer(); };
+  $("oauthSignout").onclick = () => { $("gateBlurb").textContent = GATE_BLURB_DEFAULT; signOutOAuth(); };
+  $("oauthRefresh").onclick = renderOauthSection;
+  $("modelChip").addEventListener("click", renderOauthSection);
+
+  // Manual drawer saves must also settle the gate: a pasted key closes it,
+  // clearing everything reopens it.
+  $("ownSave").addEventListener("click", () => setTimeout(renderGate, 0));
+  $("ownClear").addEventListener("click", () => setTimeout(renderGate, 0));
+
+  // ---- boot: are we returning from OpenRouter? ----
+  {
+    const params = new URLSearchParams(location.search);
+    const code = params.get("code");
+    if (code) completeOAuth(code);
+    else renderGate();
+  }
+</script>
+</body>
+</html>

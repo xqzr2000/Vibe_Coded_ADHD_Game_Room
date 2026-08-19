@@ -1,0 +1,14 @@
+node_modules/
+.env
+
+# Deep-search sidecar (installed on demand, ~350 MB)
+browser-service/.venv/
+browser-service/__pycache__/
+
+# Runtime logs from the startup scripts. Kept out of .devcontainer/ on purpose:
+# the Dev Containers extension watches that folder and would prompt to rebuild
+# every time a log file changed.
+.logs/
+
+# Runtime PID file
+.focus-room.pid

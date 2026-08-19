@@ -1,0 +1,22 @@
+[
+  {
+    "name": "EndeavorRx",
+    "audience": "children 8-17 with ADHD",
+    "access": "prescription-only",
+    "platform": "iOS / Android",
+    "description": "FDA-authorized video-game treatment designed to improve attention function, played about 25 minutes a day. A doctor or other prescriber must write a prescription.",
+    "evidence": "First game-based digital therapeutic authorized by the FDA (2020) for pediatric ADHD.",
+    "url": "https://www.endeavorrx.com",
+    "savedAt": "seed"
+  },
+  {
+    "name": "EndeavorOTC",
+    "audience": "adults 18+",
+    "access": "over-the-counter",
+    "platform": "iOS / Android",
+    "description": "The adult version of the Endeavor attention-training game, available without a prescription via subscription.",
+    "evidence": "FDA-authorized (2025) over-the-counter digital therapeutic for adults with ADHD.",
+    "url": "https://www.endeavorotc.com",
+    "savedAt": "seed"
+  }
+]
