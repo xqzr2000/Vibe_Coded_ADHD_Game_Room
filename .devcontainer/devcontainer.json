@@ -1,21 +1,25 @@
 {
   "name": "Focus Room",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
-  "features": {
-    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
-  },
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "onCreateCommand": "bash .devcontainer/setup.sh || true",
+  "postAttachCommand": "bash .devcontainer/on-attach.sh || true",
+  "waitFor": "onCreateCommand",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": { "label": "Focus Room", "onAutoForward": "openPreview" },
-    "8010": { "label": "Browser sidecar (deep search)", "onAutoForward": "ignore" }
+    "8010": { "label": "Browser sidecar (deep search)", "onAutoForward": "silent" }
   },
-  "postCreateCommand": "npm install && ([ -f .env ] || cp .env.example .env) && (bash setup-browser-service.sh || echo 'Browser sidecar setup skipped — deep search will fall back to standard search.')",
   "secrets": {
     "OPENROUTER_API_KEY": {
-      "description": "OpenRouter API key (https://openrouter.ai/keys). Powers all agents, including the researcher's web search and the deep-search browser sidecar."
+      "description": "OpenRouter API key. Powers all agents, including web search and the deep-search sidecar.",
+      "documentationUrl": "https://openrouter.ai/keys"
     }
   },
   "customizations": {
-    "vscode": { "extensions": ["dbaeumer.vscode-eslint", "ms-python.python"] }
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
   }
 }

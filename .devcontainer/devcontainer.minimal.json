@@ -1,0 +1,6 @@
+{
+  "name": "Focus Room (minimal fallback)",
+  "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
+  "onCreateCommand": "npm install --no-audit --fund=false || true",
+  "forwardPorts": [3000]
+}
