@@ -152,8 +152,8 @@ Or, ideally, BYOK (Bring Your Own Key)
 
 ## Repository layout
 
-```
-focus-room/
+```text
+Vibe_Coded_ADHD_Game_Room/
 ├── server/                  ← the app
 │   ├── index.js                 orchestrator: HTTP + WebSocket + turn-taking
 │   ├── config.js                per-session settings & key resolution
@@ -170,25 +170,30 @@ focus-room/
 │       ├── doctor.js            Dr. Maple — conversation lead
 │       ├── researcher.js        Scout — background research pipeline
 │       └── scout-tasks.js       what Scout can research
-├── public/index.html        ← the entire frontend, one file
+├── public/
+│   └── index.html            ← the entire frontend
 ├── browser-service/         ← optional Python sidecar (deep search)
-│   ├── app.py                   FastAPI wrapper around browser-use
+│   ├── app.py
 │   └── requirements.txt
-├── data/                    ← human-readable state on disk
-│   ├── games.json               Scout's findings
-│   └── memories.json            long-term memory
+├── data/
+│   ├── games.json
+│   └── memories.json
 ├── .devcontainer/           ← Codespaces boot
-│   ├── devcontainer.json        image, ports, secrets
-│   ├── setup.sh                 create-time: npm install
-│   ├── on-attach.sh             attach-time: start the app
-│   ├── devcontainer.minimal.json  recovery fallback
-│   └── README.md
-├── scripts/stop.sh          ← PID-based shutdown
-├── tests/run.mjs            ← 57 assertions, no network
-├── setup-browser-service.sh ← installs the Python sidecar on demand
+│   ├── devcontainer.json
+│   ├── setup.sh
+│   ├── on-attach.sh
+│   └── devcontainer.minimal.json
+├── scripts/
+│   └── stop.sh
+├── tests/
+│   └── run.mjs
+├── setup-browser-service.sh
 ├── package.json
+├── package-lock.json
 ├── .env.example
-├── README.md
-
+├── .gitattributes
+├── .gitignore
+├── .npmrc
+└── README.md
 
 ```
