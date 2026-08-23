@@ -31,7 +31,7 @@ Luckily, OpenRouter offers it for free.
 
 **Sign in:** click **Connect OpenRouter** (`OAuth PKCE`, `S256`). OpenRouter redirects back with a one-time code, and your browser exchanges it for a user-controlled API key stored locally.
 
-**No information leaves your browser,** because you host the backend. Returning users get a fresh key without touching existing ones.
+**No information leaves your browser,** because you host the backend. Returning users get a fresh key without touching existing ones. (A newer version with Voice support is also available for audio conversations, but it would invalidate this privacy claim.)
 
 **Extras:** the ⚙ drawer shows usage/limits, owner-only key links, and accepts optional free backup keys (OpenRouter, Groq, Gemini are free, and Deepseek is really cheap) for independent fallback routes. All stored in-browser.
 
