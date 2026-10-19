@@ -150,5 +150,7 @@ Container-specific problems (recovery mode, rebuild prompts): see `.devcontainer
 
 ## See it in action
 
-https://github.com/user-attachments/assets/4668038a-875c-45f3-b3a6-fdbb7961319e
+https://github.com/user-attachments/assets/a9523ea3-fa56-4b39-8fe6-f0e2efc369d4
+
+
 
