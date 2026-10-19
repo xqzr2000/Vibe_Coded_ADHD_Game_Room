@@ -1,0 +1,10 @@
+{
+  "name": "Focus Room (minimal fallback)",
+  "image": "mcr.microsoft.com/devcontainers/universal:2-linux",
+  "containerEnv": {
+    "DEVCONTAINER": "1"
+  },
+  "onCreateCommand": "npm install --no-audit --fund=false || true",
+  "postAttachCommand": "bash .devcontainer/on-attach.sh || true",
+  "forwardPorts": [3000]
+}

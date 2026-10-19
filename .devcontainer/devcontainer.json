@@ -1,0 +1,38 @@
+{
+  "name": "Focus Room",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "DEVCONTAINER": "1"
+  },
+  "onCreateCommand": "bash .devcontainer/setup.sh || true",
+  "postAttachCommand": "bash .devcontainer/on-attach.sh || true",
+  "waitFor": "onCreateCommand",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Focus Room",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "secrets": {
+    "GROQ_API_KEY": {
+      "description": "Optional. Your free Groq key (gsk_...). Only used by the browser when ALLOW_SERVER_KEYS is 1; otherwise paste it in the app.",
+      "documentationUrl": "https://console.groq.com/keys"
+    },
+    "TAVILY_API_KEY": {
+      "description": "Optional. Free Tavily key (tvly-...) for Scout's web search. Same ALLOW_SERVER_KEYS rule as above.",
+      "documentationUrl": "https://app.tavily.com"
+    },
+    "ALLOW_SERVER_KEYS": {
+      "description": "Optional. Set to 1 so the app uses the two keys above without pasting them in the browser. Only do this while the Codespace port stays Private.",
+      "documentationUrl": "https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": []
+    }
+  }
+}
