@@ -148,3 +148,7 @@ Tests need no network or real keys: `tests/mock-services.mjs` stands in for Groq
 
 Container-specific problems (recovery mode, rebuild prompts): see `.devcontainer/README.md`.
 
+## See it in action
+
+https://github.com/user-attachments/assets/4668038a-875c-45f3-b3a6-fdbb7961319e
+
