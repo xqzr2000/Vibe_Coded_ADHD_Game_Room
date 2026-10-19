@@ -1,0 +1,26 @@
+{
+  "name": "focus-room",
+  "version": "0.3.0",
+  "description": "A two-agent ADHD screening-conversation and research room, powered by Groq's free tier, with live web search via Tavily.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/start.js",
+    "dev": "node --watch server/start.js",
+    "stop": "bash scripts/stop.sh",
+    "restart": "bash scripts/stop.sh && npm start",
+    "test": "node tests/run.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "check": "node scripts/check-keys.mjs"
+  },
+  "engines": {
+    "node": ">=20.3"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "pdfkit": "^0.15.0",
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

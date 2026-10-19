@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Focus Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #f5f8f6;
+    --panel: #eaf0ed;
+    --card: #ffffff;
+    --ink: #17221e;
+    --ink-soft: #55635d;
+    --ink-faint: #8a978f;
+    --line: #d4ddd8;
+    --doctor: #0e7f74;
+    --doctor-soft: #dcefec;
+    --researcher: #a4551e;
+    --researcher-soft: #f4e5d8;
+    --warn: #8f3721;
+    --warn-soft: #fbe9e4;
+    --warn-line: #e2b4a4;
+    --ok: #0e7f74;
+    --radius: 14px;
+    --display: "Bricolage Grotesque", sans-serif;
+    --body: "Instrument Sans", system-ui, sans-serif;
+    --mono: "Spline Sans Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--body); background: var(--paper); color: var(--ink); display: flex; flex-direction: column; }
+  button { font-family: inherit; }
+  a { color: var(--doctor); }
+  [hidden] { display: none !important; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: .9rem; padding: .7rem 1.25rem; border-bottom: 1px solid var(--line); background: var(--paper); }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; white-space: nowrap; }
+  .brand small { display: block; font-family: var(--body); font-weight: 500; font-size: .72rem; color: var(--ink-soft); letter-spacing: .02em; }
+  .presence { display: flex; gap: .5rem; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { display: flex; align-items: center; gap: .45rem; border: 1px solid var(--line); border-radius: 999px; padding: .3rem .7rem .3rem .45rem; font-size: .8rem; background: var(--card); cursor: pointer; white-space: nowrap; }
+  .chip .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--c, #999); }
+  .chip.active .dot { animation: pulse 1.1s ease-in-out infinite; }
+  .chip .state { color: var(--ink-soft); font-size: .72rem; font-family: var(--mono); }
+  .chip .model { color: var(--ink-soft); font-size: .68rem; font-family: var(--mono); max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 1px solid var(--line); padding-left: .4rem; }
+  .chip.problem { border-color: var(--warn-line); background: var(--warn-soft); }
+  .chip .model.warn { color: var(--warn); }
+  .chip.switched { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0% { background: var(--doctor-soft); border-color: var(--doctor); } 100% { background: var(--card); border-color: var(--line); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1 } 50% { transform: scale(1.5); opacity: .55 } }
+  .connstate { font-size: .7rem; font-family: var(--mono); }
+  .connstate.connecting { color: var(--researcher); }
+  .connstate.offline { color: #b5462f; }
+  .profilechip { display: flex; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: 999px; padding: .25rem .7rem .25rem .3rem; font-size: .8rem; background: var(--card); cursor: pointer; white-space: nowrap; }
+  .profilechip:hover { border-color: var(--ink-soft); }
+  .profilechip .pav { width: 1.6rem; height: 1.6rem; border-radius: 50%; display: grid; place-items: center; font-size: .9rem; background: var(--doctor); }
+  .profilechip .gear { color: var(--ink-soft); opacity: .6; }
+  .profilechip.warn { border-color: #b5462f; background: var(--warn-soft); color: var(--warn); }
+  .aside-toggle { display: none; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .35rem .6rem; cursor: pointer; position: relative; }
+  .aside-toggle .badge { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--researcher); }
+
+  /* ---------- layout ---------- */
+  main { flex: 1; display: flex; min-height: 0; }
+  .chat-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  aside { width: 360px; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  @media (max-width: 900px) {
+    aside { display: none; position: fixed; inset: 3.6rem 0 0 auto; width: min(380px, 92vw); z-index: 20; box-shadow: -12px 0 30px rgba(0,0,0,.12); }
+    aside.open { display: flex; }
+    .aside-toggle { display: inline-block; }
+    .brand small { display: none; }
+  }
+  @media (max-width: 640px) {
+    header { gap: .4rem; padding: .55rem .75rem; }
+    .brand { font-size: 1rem; }
+    .presence { flex-wrap: nowrap; gap: .3rem; min-width: 0; }
+    .chip { padding: .25rem .5rem .25rem .4rem; font-size: .74rem; }
+    .chip .model, .chip .state { display: none; }
+    .chip.active .state { display: inline; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #chipName, .profilechip .gear { display: none; }
+    .profilechip { padding: .2rem; }
+    .aside-toggle { padding: .3rem .5rem; font-size: .78rem; }
+    #log { padding: .9rem .75rem; }
+    .composer { padding: .6rem .75rem .75rem; }
+    .actions { flex-wrap: nowrap; overflow-x: auto; width: 100%; padding-bottom: .15rem; scrollbar-width: none; }
+    .ghost { white-space: nowrap; }
+    .report { margin: 0 .75rem .2rem; flex-wrap: wrap; }
+  }
+
+  /* ---------- messages ---------- */
+  #log { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: .9rem; }
+  .msg { max-width: 46rem; display: flex; gap: .65rem; }
+  .msg .avatar { flex: 0 0 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: .8rem; }
+  .msg .avatar.emoji { font-size: 1.05rem; font-family: var(--body); font-weight: 400; }
+  .msg .body { min-width: 0; }
+  .msg .who { font-size: .72rem; color: var(--ink-soft); margin-bottom: .2rem; font-family: var(--mono); display: flex; gap: .45rem; align-items: baseline; }
+  .msg .who .mtag { color: var(--ink-faint); font-size: .66rem; }
+  .msg .bubble { border-radius: var(--radius); padding: .65rem .85rem; line-height: 1.5; font-size: .95rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg .bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .msg.doctor .avatar { background: var(--doctor); }
+  .msg.doctor .bubble { background: var(--doctor-soft); border-top-left-radius: 4px; }
+  .msg.scout .avatar { background: var(--researcher); }
+  .msg.scout .bubble { background: var(--researcher-soft); border-top-left-radius: 4px; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.user .avatar { background: var(--ink); }
+  .msg.user .who { justify-content: flex-end; }
+  .msg.user .bubble { background: var(--ink); color: var(--paper); border-top-right-radius: 4px; }
+  .msg.system { align-self: center; max-width: 36rem; }
+  .msg.system .bubble { background: transparent; color: var(--ink-soft); font-size: .8rem; border: 1px dashed var(--line); text-align: center; }
+  .msg.system .bubble button { margin-left: .4rem; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .15rem .6rem; font-size: .75rem; cursor: pointer; }
+
+  /* streaming: the process line above a bubble that is being written */
+  .process { display: flex; flex-wrap: wrap; gap: .25rem .55rem; margin: .1rem 0 .35rem; font-size: .72rem; font-family: var(--mono); color: var(--ink-faint); list-style: none; padding: 0; }
+  .process li { display: inline-flex; align-items: center; gap: .3rem; }
+  .process li::before { content: "✓"; color: var(--doctor); font-size: .7rem; }
+  .process li.active { color: var(--ink-soft); }
+  .process li.active::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: var(--doctor); animation: pulse 1.1s ease-in-out infinite; }
+  .process li.warnstep { color: var(--warn); }
+  .process li.warnstep::before { content: "↻"; color: var(--warn); }
+  .msg.final .process { display: none; }
+  .typing { display: inline-flex; gap: 4px; padding: .2rem 0; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--doctor); opacity: .5; animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25 } 40% { opacity: .9 } }
+  .caret { display: inline-block; width: 2px; height: 1em; background: var(--doctor); margin-left: 2px; vertical-align: -2px; animation: caret 1s steps(2) infinite; }
+  @keyframes caret { 50% { opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) { .chip.active .dot, .process li.active::before, .typing span, .caret, .spin { animation: none !important; } }
+
+  /* ---------- composer ---------- */
+  .composer { border-top: 1px solid var(--line); padding: .8rem 1.25rem 1rem; }
+  .composer form { display: flex; gap: .6rem; }
+  .composer textarea { flex: 1; resize: none; font: inherit; font-size: .95rem; border: 1px solid var(--line); border-radius: var(--radius); padding: .65rem .85rem; background: var(--card); min-height: 2.9rem; max-height: 9rem; }
+  .composer textarea:focus { outline: 2px solid var(--doctor); outline-offset: 1px; }
+  button.primary { border: 0; border-radius: var(--radius); padding: 0 1.2rem; background: var(--ink); color: var(--paper); font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  .composer .row2 { display: flex; justify-content: space-between; align-items: center; margin-top: .5rem; gap: .8rem; flex-wrap: wrap; }
+  .disclaimer { font-size: .72rem; color: var(--ink-soft); }
+  .actions { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .ghost { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .3rem .8rem; font-size: .78rem; cursor: pointer; }
+  .ghost:hover { border-color: var(--ink-soft); }
+  .report { display: flex; align-items: center; gap: .7rem; border: 1px solid var(--doctor); background: var(--doctor-soft); border-radius: var(--radius); padding: .7rem .85rem; margin: 0 1.25rem .2rem; }
+  .report .txt { flex: 1; font-size: .84rem; line-height: 1.4; }
+  .report .txt strong { display: block; font-family: var(--display); font-size: .92rem; }
+  .report a.dl { background: var(--doctor); color: #fff; text-decoration: none; border-radius: 999px; padding: .4rem .9rem; font-size: .82rem; font-weight: 600; white-space: nowrap; }
+
+  /* ---------- side panel ---------- */
+  .tabs { display: flex; gap: .25rem; padding: .7rem .8rem 0; border-bottom: 1px solid var(--line); }
+  .tab { border: 0; background: none; padding: .45rem .7rem .55rem; font-size: .82rem; font-weight: 600; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; gap: .35rem; align-items: center; }
+  .tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .tab .count { font-family: var(--mono); font-size: .68rem; font-weight: 400; color: var(--ink-faint); }
+  .tab .live { width: 7px; height: 7px; border-radius: 50%; background: var(--researcher); animation: pulse 1.1s ease-in-out infinite; }
+  .tabpane { flex: 1; overflow-y: auto; padding: .9rem; }
+  .hint { font-size: .78rem; color: var(--ink-soft); line-height: 1.45; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .7rem; margin-top: .6rem; font-size: .82rem; line-height: 1.45; }
+  .card .name { font-weight: 600; }
+  .card .meta { font-family: var(--mono); font-size: .68rem; color: var(--ink-soft); margin: .15rem 0 .25rem; }
+  .card a { word-break: break-all; }
+  .tag { display: inline-block; border-radius: 4px; padding: .05rem .35rem; font-size: .65rem; font-family: var(--mono); background: var(--doctor-soft); color: var(--doctor); margin-left: .3rem; vertical-align: middle; }
+  .tag.rx { background: var(--researcher-soft); color: var(--researcher); }
+
+  /* Scout activity */
+  .empty { text-align: center; padding: 1.6rem .8rem; color: var(--ink-soft); font-size: .8rem; line-height: 1.5; }
+  .empty .big { font-family: var(--display); font-weight: 800; font-size: .95rem; color: var(--ink); margin-bottom: .2rem; }
+  .run { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: .7rem; overflow: hidden; }
+  .run.active { border-color: var(--researcher); box-shadow: 0 0 0 3px color-mix(in srgb, var(--researcher) 12%, transparent); }
+  .run > summary { list-style: none; cursor: pointer; padding: .6rem .7rem; display: flex; gap: .55rem; align-items: flex-start; }
+  .run > summary::-webkit-details-marker { display: none; }
+  .run .rstate { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; border-radius: 50%; display: grid; place-items: center; font-size: .65rem; margin-top: .1rem; background: var(--doctor-soft); color: var(--doctor); }
+  .run.error .rstate { background: var(--warn-soft); color: var(--warn); }
+  .run.active .rstate { background: transparent; border: 2px solid var(--researcher-soft); border-top-color: var(--researcher); }
+  .spin { animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .run .rtitle { flex: 1; min-width: 0; }
+  .run .rtitle b { font-size: .84rem; display: block; }
+  .run .rtitle span { font-size: .72rem; color: var(--ink-soft); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .run time { font-family: var(--mono); font-size: .66rem; color: var(--ink-faint); white-space: nowrap; margin-top: .15rem; }
+  .steps { list-style: none; padding: 0 .7rem .7rem; margin: 0; position: relative; }
+  .step { position: relative; padding: 0 0 .6rem 1.7rem; font-size: .79rem; line-height: 1.4; }
+  .step::before { content: ""; position: absolute; left: .55rem; top: 1.25rem; bottom: 0; width: 1px; background: var(--line); }
+  .step:last-child::before { display: none; }
+  .step .ico { position: absolute; left: 0; top: 0; width: 1.15rem; height: 1.15rem; border-radius: 50%; display: grid; place-items: center; font-size: .66rem; font-family: var(--mono); background: var(--panel); color: var(--ink-soft); border: 1px solid var(--line); }
+  .step.search .ico { background: #e7eef8; color: #3b5a8a; border-color: #c9d6ea; }
+  .step.read .ico { background: var(--researcher-soft); color: var(--researcher); border-color: #ead1bd; }
+  .step.thinking .ico { background: #efeaf6; color: #6b5196; border-color: #ddd2ec; }
+  .step.done .ico, .step.kind-done .ico { background: var(--doctor-soft); color: var(--doctor); border-color: #b9ddd7; }
+  .step.error .ico { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-line); }
+  .step.active .ico { box-shadow: 0 0 0 3px color-mix(in srgb, var(--researcher) 18%, transparent); }
+  .step .t { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+  .step .t .mtag { font-family: var(--mono); font-weight: 400; font-size: .66rem; color: var(--ink-faint); margin-left: .3rem; }
+  .step .d { color: var(--ink-soft); font-size: .74rem; }
+  .step.note .t { font-weight: 500; color: var(--ink-soft); }
+  .reslist { list-style: none; padding: 0; margin: .3rem 0 0; display: flex; flex-direction: column; gap: .2rem; }
+  .reslist li { font-size: .74rem; display: flex; gap: .4rem; align-items: baseline; min-width: 0; }
+  .reslist .dom { font-family: var(--mono); font-size: .66rem; color: var(--ink-soft); background: var(--panel); border-radius: 4px; padding: 0 .3rem; white-space: nowrap; }
+  .reslist a { color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .reslist a:hover { text-decoration: underline; }
+  .reslist li.ok .dom { background: var(--doctor-soft); color: var(--doctor); }
+  .reslist li.failed { color: var(--warn); }
+  .reslist li.failed .dom { background: var(--warn-soft); color: var(--warn); }
+  .reslist li.reading .dom { background: var(--researcher-soft); color: var(--researcher); }
+  .think { margin-top: .3rem; background: #faf8fd; border: 1px solid #e6def1; border-radius: 8px; padding: .45rem .55rem; font-family: var(--mono); font-size: .68rem; line-height: 1.5; color: #4f4467; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 7.5rem; overflow-y: auto; }
+  .think.collapsed { max-height: 3.1rem; overflow: hidden; -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent); }
+  .thinktoggle { border: 0; background: none; color: #6b5196; font-size: .68rem; cursor: pointer; padding: .15rem 0 0; font-family: var(--mono); }
+
+  /* ---------- settings drawer ---------- */
+  .backdrop { position: fixed; inset: 0; background: rgba(15,25,20,.35); z-index: 50; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); background: var(--paper); z-index: 51; overflow-y: auto; padding: 1.25rem 1.25rem 0; box-shadow: -18px 0 40px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 1.2rem; }
+  .drawer h2 { font-family: var(--display); font-size: 1.15rem; font-weight: 800; }
+  .drawer h3 { font-family: var(--display); font-size: .92rem; font-weight: 800; margin-bottom: .35rem; display: flex; align-items: center; gap: .5rem; }
+  .drawer h3 .pill { font-family: var(--mono); font-weight: 400; font-size: .64rem; padding: .05rem .4rem; border-radius: 999px; background: var(--panel); color: var(--ink-soft); }
+  .drawer h3 .pill.ok { background: var(--doctor-soft); color: var(--doctor); }
+  .drawer h3 .pill.bad { background: var(--warn-soft); color: var(--warn); }
+  .drawer .close { position: absolute; top: 1rem; right: 1rem; border: 0; background: none; font-size: 1.3rem; cursor: pointer; color: var(--ink-soft); }
+  .drawer section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .9rem; }
+  .drawer label { display: block; font-size: .78rem; color: var(--ink-soft); margin: .55rem 0 .2rem; }
+  .drawer select, .drawer input[type=text], .drawer input[type=password] { width: 100%; font: inherit; font-size: .88rem; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); }
+  .fieldnote { font-size: .74rem; color: var(--ink-soft); margin-top: .3rem; line-height: 1.45; }
+  .keyrow { display: flex; gap: .4rem; }
+  .keyrow input { flex: 1; font-family: var(--mono) !important; font-size: .8rem !important; }
+  .mini { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .42rem .7rem; font-size: .78rem; cursor: pointer; white-space: nowrap; }
+  .mini:hover { border-color: var(--ink-soft); }
+  .mini.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .mini:disabled { opacity: .55; cursor: default; }
+  .result { font-size: .78rem; margin-top: .45rem; line-height: 1.45; border-radius: 8px; padding: .45rem .6rem; background: var(--panel); color: var(--ink-soft); }
+  .result.ok { background: var(--doctor-soft); color: #0b5f57; }
+  .result.bad { background: var(--warn-soft); color: #7d3320; }
+  .result.warnbox { background: #fdf3e7; color: #7a4a14; }
+  .statusrows { display: flex; flex-direction: column; gap: .35rem; }
+  .srow { display: flex; gap: .55rem; align-items: center; font-size: .8rem; }
+  .srow .sdot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--ink-faint); flex: 0 0 auto; }
+  .srow.ok .sdot { background: var(--ok); }
+  .srow.bad .sdot { background: #b5462f; }
+  .srow.warn .sdot { background: var(--researcher); }
+  .srow .sl { font-weight: 600; min-width: 6.5rem; }
+  .srow .sv { color: var(--ink-soft); font-size: .76rem; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .quota { width: 100%; border-collapse: collapse; font-size: .76rem; margin-top: .4rem; }
+  .quota th { text-align: left; font-weight: 500; color: var(--ink-soft); font-size: .7rem; padding: .25rem .3rem; border-bottom: 1px solid var(--line); }
+  .quota td { padding: .35rem .3rem; border-bottom: 1px solid var(--panel); vertical-align: top; }
+  .quota td.m { font-family: var(--mono); font-size: .7rem; }
+  .bar { height: 4px; background: var(--panel); border-radius: 2px; margin-top: .2rem; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--doctor); }
+  .agentpick { display: grid; grid-template-columns: auto 1fr; gap: .4rem .6rem; align-items: center; font-size: .8rem; }
+  .agentpick .chain { grid-column: 2; font-size: .7rem; color: var(--ink-faint); font-family: var(--mono); margin-top: -.2rem; }
+  .idrow { display: flex; align-items: center; gap: .6rem; margin: .3rem 0 .1rem; }
+  .idrow input { flex: 1; }
+  .idbadge { flex: 0 0 2.6rem; height: 2.6rem; border-radius: 50%; display: grid; place-items: center; font-size: 1.25rem; background: var(--doctor); }
+  .avatargrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; margin: .55rem 0 .3rem; }
+  .avatarbtn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .3rem 0; font-size: 1.05rem; cursor: pointer; line-height: 1.4; }
+  .avatarbtn.on { border-color: var(--ink); background: var(--panel); box-shadow: inset 0 0 0 1px var(--ink); }
+  .colorgrid { display: flex; gap: .4rem; margin: .3rem 0 .1rem; }
+  .colorbtn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: inset 0 0 0 2px #fff; }
+  .colorbtn.on { border-color: var(--ink); }
+  .howto { margin-top: .5rem; font-size: .78rem; }
+  .howto summary { cursor: pointer; color: var(--doctor); font-weight: 500; }
+  .howto ol { margin: .45rem 0 0 1.1rem; padding: 0; line-height: 1.55; color: var(--ink-soft); }
+  .howto code { font-family: var(--mono); font-size: .72rem; background: var(--panel); padding: 0 .25rem; border-radius: 4px; }
+  .privacy { font-size: .74rem; color: var(--ink-soft); line-height: 1.45; padding: 0 .2rem; }
+  .savebar { display: flex; gap: .5rem; position: sticky; bottom: 0; background: var(--paper); padding: .7rem 0 1rem; margin-top: auto; }
+  .savebar button { flex: 1; border: 0; border-radius: 10px; padding: .65rem; font: inherit; font-weight: 600; cursor: pointer; background: var(--ink); color: var(--paper); }
+  .savebar button.sec { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+
+  /* ---------- first-run gate ---------- */
+  .gate { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--paper) 55%, transparent); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); padding: 1rem; }
+  .gatecard { width: min(460px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem 1.4rem 1.25rem; box-shadow: 0 18px 50px rgba(0,0,0,.14); max-height: calc(100vh - 2rem); overflow-y: auto; }
+  .gatecard h2 { font-family: var(--display); font-size: 1.25rem; font-weight: 800; margin-bottom: .35rem; }
+  .gatecard p { font-size: .86rem; color: var(--ink-soft); line-height: 1.5; margin-bottom: .8rem; }
+  .gatecard ol { font-size: .84rem; color: var(--ink-soft); line-height: 1.55; margin: 0 0 .9rem 1.1rem; padding: 0; }
+  .gatecard input { width: 100%; padding: .65rem .7rem; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: .9rem; }
+  .gatecard input.mono { font-family: var(--mono); font-size: .8rem; }
+  .gatecard .cta { width: 100%; border: 0; border-radius: 11px; padding: .75rem 1rem; font: inherit; font-weight: 700; cursor: pointer; background: var(--ink); color: var(--paper); margin-top: .7rem; }
+  .gatecard .cta:disabled { opacity: .55; cursor: default; }
+  .gatecard .alt { display: block; text-align: center; margin-top: .7rem; font-size: .78rem; color: var(--ink-soft); background: none; border: 0; cursor: pointer; text-decoration: underline; width: 100%; }
+  .gatecard .gatenote { font-size: .74rem; color: var(--ink-soft); margin: .9rem 0 0; line-height: 1.45; background: var(--panel); border-radius: 9px; padding: .55rem .7rem; }
+  .gatestatus { font-size: .8rem; margin-top: .6rem; min-height: 1.1em; }
+  .gatestatus.err { color: #a3372c; }
+  .gatestatus.ok { color: var(--doctor); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Focus&nbsp;Room<small>screening conversation &amp; research — two agents, one chat</small></div>
+  <div class="presence" id="presence"></div>
+  <span class="connstate" id="connState"></span>
+  <button class="profilechip" id="profileChip" title="Your name, icon and settings">
+    <span class="pav" id="chipAvatar" aria-hidden="true">🌱</span>
+    <span id="chipName">Settings</span>
+    <span class="gear" aria-hidden="true">⚙</span>
+  </button>
+  <button class="aside-toggle" id="asideToggle" aria-label="Toggle activity panel">Activity<span class="badge" id="asideBadge" hidden></span></button>
+</header>
+
+<main>
+  <div class="chat-col">
+    <div id="log" aria-live="polite"></div>
+    <div id="reportSlot"></div>
+    <div class="composer">
+      <form id="form">
+        <textarea id="input" rows="1" placeholder="Say hello, or describe what's been hard to focus on lately…" autofocus></textarea>
+        <button class="primary" id="send" type="submit">Send</button>
+      </form>
+      <div class="row2">
+        <span class="disclaimer">AI screening companion — not a medical diagnosis. For an evaluation, see a licensed clinician.</span>
+        <span class="actions">
+          <button class="ghost" id="askClinician" type="button">Find how to get assessed</button>
+          <button class="ghost" id="askDeals" type="button">Check prices &amp; coverage</button>
+          <button class="ghost" id="askScout" type="button">Ask Scout…</button>
+          <button class="ghost" id="statement" type="button">Write statement (PDF)</button>
+          <button class="ghost" id="endSession" type="button">End session &amp; save memory</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <aside id="aside">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="activity" role="tab">Scout activity <span class="live" id="liveDot" hidden></span></button>
+      <button class="tab" data-tab="library" role="tab">Library <span class="count" id="gameCount">0</span></button>
+      <button class="tab" data-tab="memory" role="tab">Memory <span class="count" id="memCount">0</span></button>
+    </div>
+    <div class="tabpane" id="pane-activity">
+      <div id="runs"></div>
+    </div>
+    <div class="tabpane" id="pane-library" hidden>
+      <p class="hint">Saved by Scout from web research. Dr. Maple draws suggestions from here.</p>
+      <div id="games"></div>
+    </div>
+    <div class="tabpane" id="pane-memory" hidden>
+      <p class="hint" id="memHint">Session summaries Scout writes so future conversations pick up where you left off. Stored on this server in data/memories.json.</p>
+      <div id="memories"></div>
+    </div>
+  </aside>
+</main>
+
+<!-- First run: key, then name -->
+<div class="gate" id="gate" hidden role="dialog" aria-modal="true" aria-label="Get started">
+  <div class="gatecard" id="gateKey">
+    <h2>Welcome to Focus&nbsp;Room</h2>
+    <p id="gateBlurb">Dr.&nbsp;Maple and Scout run on Groq's free tier. You need a free Groq API key — it takes about a minute and no card.</p>
+    <ol>
+      <li>Open <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> and sign in.</li>
+      <li>Click <b>Create API Key</b>, name it “Focus Room”, and copy it (it starts with <code>gsk_</code>).</li>
+      <li>Paste it below.</li>
+    </ol>
+    <input id="gateKeyInput" class="mono" type="password" placeholder="gsk_…" autocomplete="off" spellcheck="false" />
+    <div class="gatestatus" id="gateStatus"></div>
+    <button class="cta" id="gateKeySave">Test key &amp; continue</button>
+    <p class="gatenote">Your key is kept in this browser only and sent to this app just to make your own calls. It is never written to disk on the server. Focus Room only ever calls Groq's free models.</p>
+  </div>
+  <div class="gatecard" id="gateName" hidden>
+    <h2>What should we call you?</h2>
+    <p>Dr.&nbsp;Maple and Scout will use your name now and then — not in every message. Pick an icon too.</p>
+    <div class="idrow">
+      <div class="idbadge" id="gatePreview">🌱</div>
+      <input id="gateNameInput" type="text" maxlength="24" placeholder="Alex" autocomplete="given-name" />
+    </div>
+    <div class="avatargrid" id="gateEmoji"></div>
+    <div class="colorgrid" id="gateColors"></div>
+    <div class="gatestatus err" id="gateNameError"></div>
+    <button class="cta" id="gateNameSave">Start</button>
+    <button class="alt" id="gateNameSkip" type="button">Skip — no name</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="backdrop" id="backdrop" hidden></div>
+<div class="drawer" id="drawer" hidden role="dialog" aria-label="Settings">
+  <button class="close" id="drawerClose" aria-label="Close">×</button>
+  <h2>Settings</h2>
+
+  <section id="secProfile">
+    <h3>You</h3>
+    <div class="idrow">
+      <div class="idbadge" id="profilePreview">🌱</div>
+      <input id="profileName" type="text" maxlength="24" placeholder="Your preferred name" aria-label="Preferred name" />
+    </div>
+    <div class="avatargrid" id="profileEmoji"></div>
+    <div class="colorgrid" id="profileColors"></div>
+    <p class="fieldnote" id="profileNote">The agents call you by this name now and then. Saved in this browser only.</p>
+  </section>
+
+  <section id="secGroq">
+    <h3>Groq key <span class="pill" id="groqPill">not set</span></h3>
+    <div class="keyrow">
+      <input id="groqKey" type="password" placeholder="gsk_…" autocomplete="off" spellcheck="false" aria-label="Groq API key" />
+      <button class="mini" id="groqShow" type="button" aria-label="Show key">Show</button>
+      <button class="mini primary" id="groqTest" type="button">Test</button>
+    </div>
+    <div class="result" id="groqResult" hidden></div>
+    <p class="fieldnote">Free at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Testing lists your models and costs no tokens.</p>
+  </section>
+
+  <section id="secConn">
+    <h3>Connection</h3>
+    <div class="statusrows" id="connRows"></div>
+    <div style="margin-top:.6rem"><button class="mini" id="connCheck" type="button">Run checks</button></div>
+  </section>
+
+  <section id="secModels">
+    <h3>Models &amp; quota <span class="pill" id="planPill">free only</span></h3>
+    <div class="agentpick" id="agentPick"></div>
+    <table class="quota" id="quotaTable"></table>
+    <p class="fieldnote" id="planNote">Each free model has its own allowance: 1,000 requests a day and 8,000 tokens a minute. When one runs low, the agent moves to the next.</p>
+    <div style="margin-top:.5rem"><button class="mini" id="quotaProbe" type="button">Refresh numbers (uses 1 request)</button></div>
+  </section>
+
+  <section id="secSearch">
+    <h3>Web search for Scout <span class="pill" id="tavilyPill">DuckDuckGo</span></h3>
+    <label for="tavilyKey">Tavily API key (optional, recommended)</label>
+    <div class="keyrow">
+      <input id="tavilyKey" type="password" placeholder="tvly-…" autocomplete="off" spellcheck="false" />
+      <button class="mini" id="tavilyShow" type="button">Show</button>
+      <button class="mini primary" id="tavilyTest" type="button">Test</button>
+    </div>
+    <div class="result" id="tavilyResult" hidden></div>
+    <details class="howto">
+      <summary>How to get a free Tavily key</summary>
+      <ol>
+        <li>Go to <a href="https://app.tavily.com" target="_blank" rel="noopener">app.tavily.com</a> and sign up — no card needed.</li>
+        <li>On the dashboard, copy your API key (starts with <code>tvly-</code>).</li>
+        <li>Paste it above, click <b>Test</b>, then <b>Save</b>.</li>
+      </ol>
+      <p class="fieldnote">The free plan gives 1,000 credits a month. One Scout research run uses about 3 (2 searches + reading up to 3 pages), so roughly 300 runs. Without a key, Scout searches DuckDuckGo and reads pages itself — which works, but can be blocked from cloud servers like Codespaces.</p>
+    </details>
+  </section>
+
+  <p class="privacy">Keys stay in this browser (localStorage) and are sent to this app only to make your own API calls — never written to the server's disk or logs. Don't paste keys into a Focus Room you don't control.</p>
+
+  <div class="savebar">
+    <button class="sec" id="keysClear" type="button">Remove keys</button>
+    <button id="settingsSave" type="button">Save</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $("log");
+
+  // ---------- browser storage (never assume it works) ----------
+  const store = {
+    get(k, fallback) { try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
+  };
+  const K_KEYS = "focusroom.keys.v2", K_PROFILE = "focusroom.profile.v2", K_MODELS = "focusroom.models.v2", K_SESSION = "focusroom.sessionId";
+  const loadKeys = () => store.get(K_KEYS, {}) || {};
+  const loadProfile = () => store.get(K_PROFILE, null);
+  const loadModels = () => store.get(K_MODELS, {}) || {};
+
+  // ---------- state ----------
+  let ws = null, agents = [], meta = null, serverConfig = null, serverKeys = { groq: false, tavily: false };
+  let profile = loadProfile() || { nickname: "", avatarEmoji: "🌱", avatarColor: "#0e7f74", setupDone: false };
+  let quota = [], plan = "unknown", lastStatus = null, lastGroqTest = null;
+  let reconnectAttempt = 0, reconnectTimer = null, everConnected = false, wsState = "connecting";
+  let lastServerPing = null;
+  const statuses = {}, agentProblem = {}, justSwitched = {};
+  const streams = new Map(); // streamId -> { el, text, steps }
+  const runs = new Map(); // runId -> run
+  let runOrder = [];
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const domain = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  const modelLabel = (id) => (meta?.models || []).find((m) => m.id === id)?.label || String(id || "").split("/").pop();
+  const hasGroq = () => Boolean(loadKeys().groq || serverKeys.groq);
+  const fmtMs = (ms) => ms >= 3600_000 ? `${Math.round(ms / 3600_000)}h` : ms >= 60_000 ? `${Math.round(ms / 60_000)}m` : `${Math.max(1, Math.round(ms / 1000))}s`;
+
+  // ---------- WebSocket ----------
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const sessionId = () => { try { return sessionStorage.getItem(K_SESSION) || ""; } catch { return ""; } };
+  const sendWs = (msg) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); };
+
+  function setConnState(state) {
+    wsState = state;
+    const el = $("connState");
+    el.textContent = state === "online" ? "" : state === "connecting" ? (everConnected ? "reconnecting…" : "connecting…") : "offline";
+    el.className = "connstate " + state;
+    renderConnRows();
+  }
+
+  function connect() {
+    clearTimeout(reconnectTimer);
+    setConnState("connecting");
+    const id = sessionId();
+    ws = new WebSocket(`${proto}://${location.host}/${id ? `?session=${encodeURIComponent(id)}` : ""}`);
+    ws.addEventListener("open", () => { reconnectAttempt = 0; everConnected = true; setConnState("online"); });
+    ws.addEventListener("close", () => {
+      setConnState("offline");
+      reconnectAttempt += 1;
+      reconnectTimer = setTimeout(connect, Math.min(1000 * 2 ** (reconnectAttempt - 1), 15000));
+    });
+    ws.addEventListener("error", () => { try { ws.close(); } catch {} });
+    ws.addEventListener("message", (ev) => { try { onMessage(JSON.parse(ev.data)); } catch (err) { console.error(err); } });
+  }
+  const nudge = () => { if (!ws || ws.readyState === WebSocket.CLOSED) { reconnectAttempt = 0; connect(); } };
+  window.addEventListener("online", nudge);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) nudge(); });
+
+  // Hand the server this browser's key, models and profile. Safe to repeat.
+  function pushConfig({ retry = false } = {}) {
+    const keys = loadKeys();
+    sendWs({ type: "set_config", config: { keys: { groq: keys.groq || "", tavily: keys.tavily || "" }, replaceKeys: true, models: loadModels(), retry } });
+  }
+  const pushProfile = () => sendWs({ type: "set_profile", profile });
+
+  function onMessage(msg) {
+    switch (msg.type) {
+      case "hello": {
+        agents = msg.agents || [];
+        serverKeys = msg.serverKeys || serverKeys;
+        serverConfig = msg.config;
+        if (msg.models && meta) meta.models = msg.models;
+        try { sessionStorage.setItem(K_SESSION, msg.sessionId); } catch {}
+        renderGames(msg.games); renderMemories(msg.memories, msg.memory);
+        if (log.dataset.rendered !== "1") {
+          log.innerHTML = "";
+          if (msg.transcript?.length) {
+            for (const m of msg.transcript) m.from === "user" ? addUser(m.text) : addAgentMessage(m.agentId || "doctor", m.agentName || "Agent", m.text);
+          } else {
+            addSystem("Screening-style conversation, not a diagnosis. Dr. Maple will start things off.");
+          }
+          log.dataset.rendered = "1";
+        }
+        runs.clear(); runOrder = [];
+        for (const r of msg.scoutRuns || []) { runs.set(r.id, r); runOrder.push(r.id); }
+        renderRuns();
+        renderPresence();
+        boot();
+        break;
+      }
+      case "config": serverConfig = msg.config; if (msg.serverKeys) serverKeys = msg.serverKeys; renderPresence(); renderModels(); break;
+      case "profile":
+        if (msg.error) { $("profileNote").textContent = msg.error; $("gateNameError").textContent = msg.error; }
+        break;
+      case "status": statuses[msg.agent] = msg.state; renderPresence(); break;
+      case "agent_start": startStream(msg); break;
+      case "agent_step": streamStep(msg); break;
+      case "agent_delta": streamDelta(msg); break;
+      case "agent_reset": streamReset(msg); break;
+      case "agent_final": finishStream(msg); break;
+      case "agent_abort": abortStream(msg); break;
+      case "agent_message":
+        if (agentProblem[msg.agent]) { delete agentProblem[msg.agent]; renderPresence(); }
+        addAgentMessage(msg.agent, msg.name, msg.text);
+        break;
+      case "agent_problem": showProblem(msg); break;
+      case "model_switch":
+        serverConfig = msg.config || serverConfig;
+        justSwitched[msg.agentId] = true;
+        renderPresence(); renderModels();
+        break;
+      case "games": renderGames(msg.games); break;
+      case "memories": renderMemories(msg.memories); break;
+      case "report_ready": showReport(msg); break;
+      case "scout_run": onRun(msg); break;
+      case "scout_trace": onTrace(msg); break;
+      case "quota": quota = msg.quota || []; plan = msg.plan || plan; renderModels(); break;
+      case "status_report": lastStatus = msg.report; quota = msg.report?.groq?.quota || quota; plan = msg.report?.groq?.plan || plan; renderConnRows(); renderModels(); renderTavilyFromStatus(); break;
+      case "capability_required": showGate("key", msg.text); break;
+      case "log": console.info("[focus-room]", msg.text); break;
+    }
+  }
+
+  // ---------- boot: key → name → room ----------
+  function boot() {
+    renderProfileChip();
+    if (!hasGroq()) { showGate("key"); return; }
+    pushConfig(); pushProfile();
+    if (!profile.setupDone) { showGate("name"); return; }
+    hideGate();
+    sendWs({ type: "client_ready" });
+  }
+
+  function showGate(which, blurb) {
+    $("gate").hidden = false;
+    $("gateKey").hidden = which !== "key";
+    $("gateName").hidden = which !== "name";
+    if (which === "key") {
+      if (blurb) $("gateBlurb").textContent = blurb + " It's free — about a minute, no card.";
+      setTimeout(() => $("gateKeyInput").focus(), 50);
+    } else {
+      $("gateNameInput").value = profile.nickname || "";
+      renderIconPickers("gate");
+      setTimeout(() => $("gateNameInput").focus(), 50);
+    }
+  }
+  const hideGate = () => { $("gate").hidden = true; };
+
+  async function testGroq(key, { probe = false } = {}) {
+    const r = await fetch("/api/groq/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, probe }) });
+    return r.json();
+  }
+
+  $("gateKeySave").onclick = async () => {
+    const key = $("gateKeyInput").value.trim();
+    const st = $("gateStatus");
+    if (!key) { st.className = "gatestatus err"; st.textContent = "Paste your Groq key first."; return; }
+    if (!key.startsWith("gsk_")) { st.className = "gatestatus err"; st.textContent = "Groq keys start with gsk_ — check you copied the whole key."; return; }
+    $("gateKeySave").disabled = true; st.className = "gatestatus"; st.textContent = "Testing with Groq…";
+    try {
+      const r = await testGroq(key);
+      lastGroqTest = r;
+      if (!r.ok) { st.className = "gatestatus err"; st.textContent = r.error + (r.hint ? " " + r.hint : ""); return; }
+      store.set(K_KEYS, { ...loadKeys(), groq: key });
+      st.className = "gatestatus ok"; st.textContent = `Key works — ${r.usable} free models ready.`;
+      // No retry flag here: the greeting must wait until the name step is
+      // done, so client_ready (sent after it) is what starts the room.
+      pushConfig(); pushProfile();
+      setTimeout(() => (profile.setupDone ? (hideGate(), sendWs({ type: "client_ready" })) : showGate("name")), 500);
+    } catch (err) {
+      st.className = "gatestatus err"; st.textContent = "Couldn't reach the Focus Room server: " + err.message;
+    } finally { $("gateKeySave").disabled = false; }
+  };
+  $("gateKeyInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("gateKeySave").click(); });
+
+  function finishNameSetup(skip) {
+    if (!skip) {
+      const name = $("gateNameInput").value.trim();
+      if (/^(dr\.? ?maple|maple|scout)$/i.test(name)) { $("gateNameError").textContent = "That's one of the agents — pick something else."; return; }
+      profile.nickname = name;
+    } else profile.nickname = "";
+    profile.setupDone = true;
+    store.set(K_PROFILE, profile);
+    pushProfile(); renderProfileChip(); refreshUserBadges();
+    hideGate();
+    sendWs({ type: "client_ready" });
+  }
+  $("gateNameSave").onclick = () => finishNameSetup(false);
+  $("gateNameSkip").onclick = () => finishNameSetup(true);
+  $("gateNameInput").addEventListener("keydown", (e) => { if (e.key === "Enter") finishNameSetup(false); });
+
+  // ---------- presence ----------
+  function renderPresence() {
+    const box = $("presence");
+    box.innerHTML = "";
+    for (const a of agents) {
+      const state = statuses[a.id] || "idle";
+      const active = serverConfig?.active?.[a.id] || serverConfig?.models?.[a.id];
+      const problem = agentProblem[a.id];
+      const el = document.createElement("button");
+      el.className = "chip" + (state !== "idle" ? " active" : "") + (justSwitched[a.id] ? " switched" : "") + (problem ? " problem" : "");
+      el.style.setProperty("--c", a.color);
+      el.title = problem ? `${a.name}: ${problem.text} ${problem.hint || ""}` : active ? `${a.name} is on ${modelLabel(active)} (Groq free tier). Click for settings.` : a.role;
+      el.onclick = openDrawer;
+      const right = problem ? `<span class="model warn">${problem.needsKey ? "needs a key" : "unavailable"}</span>` : active ? `<span class="model">${esc(modelLabel(active))}</span>` : "";
+      el.innerHTML = `<span class="dot"></span><span>${esc(a.name)}</span><span class="state">${state === "idle" ? esc(a.role.toLowerCase()) : esc(state) + "…"}</span>${right}`;
+      box.appendChild(el);
+    }
+    for (const k of Object.keys(justSwitched)) delete justSwitched[k];
+  }
+
+  // ---------- messages ----------
+  const initials = (name) => String(name).split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const agentColor = (id) => agents.find((a) => a.id === id)?.color;
+  const scrollDown = () => { const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 160; if (nearBottom) log.scrollTop = log.scrollHeight; };
+
+  // URLs become links; everything else stays text (never innerHTML).
+  function setLinkedText(el, text) {
+    el.textContent = "";
+    const parts = String(text).split(/(https?:\/\/[^\s<>()"']+[^\s<>()"'.,;:!?])/g);
+    for (const p of parts) {
+      if (/^https?:\/\//.test(p)) { const a = document.createElement("a"); a.href = p; a.target = "_blank"; a.rel = "noopener"; a.textContent = p; el.appendChild(a); }
+      else if (p) el.appendChild(document.createTextNode(p));
+    }
+  }
+
+  function agentShell(agentId, name) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + agentId;
+    const av = document.createElement("div"); av.className = "avatar"; av.textContent = initials(name);
+    const c = agentColor(agentId); if (c) av.style.background = c;
+    const body = document.createElement("div"); body.className = "body";
+    const who = document.createElement("div"); who.className = "who"; who.innerHTML = `<span>${esc(name)}</span><span class="mtag"></span>`;
+    const process = document.createElement("ol"); process.className = "process";
+    const bubble = document.createElement("div"); bubble.className = "bubble";
+    body.append(who, process, bubble);
+    wrap.append(av, body);
+    return { wrap, who, process, bubble };
+  }
+
+  function addAgentMessage(agentId, name, text) {
+    const s = agentShell(agentId, name);
+    s.wrap.classList.add("final");
+    setLinkedText(s.bubble, text);
+    log.appendChild(s.wrap); scrollDown();
+  }
+
+  function userBadge(av, who) {
+    av.className = "avatar emoji";
+    av.textContent = profile.avatarEmoji || "🌱";
+    av.style.background = profile.avatarColor || "var(--ink)";
+    who.textContent = profile.nickname || "You";
+  }
+  function addUser(text) {
+    const wrap = document.createElement("div"); wrap.className = "msg user";
+    const av = document.createElement("div");
+    const body = document.createElement("div"); body.className = "body";
+    const who = document.createElement("div"); who.className = "who";
+    userBadge(av, who);
+    const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+    body.append(who, bubble); wrap.append(av, body);
+    log.appendChild(wrap); log.scrollTop = log.scrollHeight;
+  }
+  function refreshUserBadges() {
+    for (const m of document.querySelectorAll(".msg.user")) userBadge(m.querySelector(".avatar"), m.querySelector(".who"));
+  }
+  function addSystem(text, action) {
+    const wrap = document.createElement("div"); wrap.className = "msg system";
+    const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+    if (action) { const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { action.run(); b.disabled = true; }; bubble.appendChild(b); }
+    wrap.appendChild(bubble); log.appendChild(wrap); scrollDown();
+  }
+
+  // ---------- streaming (Dr. Maple) ----------
+  function startStream(msg) {
+    const s = agentShell(msg.agent, msg.name);
+    s.bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+    log.appendChild(s.wrap); scrollDown();
+    streams.set(msg.streamId, { ...s, text: "", steps: new Map() });
+  }
+  function streamStep(msg) {
+    const st = streams.get(msg.streamId); if (!st) return;
+    for (const li of st.process.querySelectorAll("li.active")) li.classList.remove("active");
+    let li = st.steps.get(msg.id);
+    if (!li) { li = document.createElement("li"); st.steps.set(msg.id, li); st.process.appendChild(li); }
+    li.textContent = msg.label;
+    li.className = ["switch", "wait"].includes(msg.id) ? "warnstep" : "active";
+    if (msg.model) st.who.querySelector(".mtag").textContent = msg.model;
+    scrollDown();
+  }
+  function streamDelta(msg) {
+    const st = streams.get(msg.streamId); if (!st) return;
+    st.text += msg.text;
+    st.bubble.textContent = st.text;
+    const caret = document.createElement("span"); caret.className = "caret"; st.bubble.appendChild(caret);
+    scrollDown();
+  }
+  function streamReset(msg) {
+    const st = streams.get(msg.streamId); if (!st) return;
+    st.text = "";
+    st.bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+    if (msg.model) st.who.querySelector(".mtag").textContent = msg.model;
+  }
+  function finishStream(msg) {
+    if (agentProblem[msg.agent]) { delete agentProblem[msg.agent]; renderPresence(); }
+    const st = streams.get(msg.streamId);
+    if (!st) { addAgentMessage(msg.agent, msg.name, msg.text); return; }
+    setLinkedText(st.bubble, msg.text); // the cleaned final text wins
+    if (msg.model) st.who.querySelector(".mtag").textContent = msg.model;
+    st.wrap.classList.add("final");
+    streams.delete(msg.streamId);
+    scrollDown();
+  }
+  function abortStream(msg) {
+    const st = streams.get(msg.streamId);
+    if (st) st.wrap.remove();
+    streams.delete(msg.streamId);
+  }
+
+  function showProblem(msg) {
+    agentProblem[msg.agentId] = msg;
+    renderPresence(); renderProfileChip();
+    if (msg.needsKey) { showGate("key", msg.kind === "bad_key" ? "Groq rejected the saved key — paste a new one." : "Add your Groq API key to start the room."); return; }
+    if (msg.agentId === "doctor") {
+      const wait = msg.retryAfterMs ? ` (about ${fmtMs(msg.retryAfterMs)})` : "";
+      addSystem(`Dr. Maple couldn't reply: ${msg.text}${msg.kind === "rate_limited" ? ` Free limits refill shortly${wait}.` : ""}`, {
+        label: "Try again", run: () => { delete agentProblem.doctor; renderPresence(); pushConfig({ retry: true }); },
+      });
+    } else if (msg.where === "scout") {
+      addSystem(`Scout couldn't finish: ${msg.text}`);
+    }
+  }
+
+  // ---------- side panel ----------
+  let currentTab = "activity";
+  function showTab(tab) {
+    currentTab = tab;
+    for (const b of document.querySelectorAll(".tab")) b.classList.toggle("on", b.dataset.tab === tab);
+    for (const t of ["activity", "library", "memory"]) $("pane-" + t).hidden = t !== tab;
+    if (tab === "activity") $("asideBadge").hidden = true;
+  }
+  for (const b of document.querySelectorAll(".tab")) b.onclick = () => showTab(b.dataset.tab);
+  $("asideToggle").onclick = () => { $("aside").classList.toggle("open"); $("asideBadge").hidden = true; };
+
+  function renderGames(games = []) {
+    $("gameCount").textContent = games.length;
+    const box = $("games"); box.innerHTML = "";
+    for (const g of games) {
+      const rx = /prescription/i.test(g.access || "");
+      const card = document.createElement("div"); card.className = "card";
+      card.innerHTML =
+        `<div class="name">${esc(g.name)}${g.access ? `<span class="tag ${rx ? "rx" : ""}">${esc(g.access)}</span>` : ""}</div>` +
+        `<div class="meta">${esc([g.audience, g.platform, g.pricing].filter(Boolean).join(" · "))}</div>` +
+        `<div>${esc(g.description || "")}</div>` +
+        (g.evidence ? `<div class="meta">${esc(g.evidence)}</div>` : "") +
+        (/^https?:\/\//.test(g.url || "") ? `<a href="${esc(g.url)}" target="_blank" rel="noopener">${esc(g.url)}</a>` : "");
+      box.appendChild(card);
+    }
+  }
+  function renderMemories(memories = [], mode) {
+    $("memCount").textContent = memories.length;
+    if (mode === "off") $("memHint").textContent = "Long-term memory is turned off on this server (LOCAL_MEMORY=0).";
+    const box = $("memories"); box.innerHTML = "";
+    for (const m of [...memories].reverse()) {
+      const card = document.createElement("div"); card.className = "card";
+      card.innerHTML = `<div class="meta">${esc((m.createdAt || "").slice(0, 16).replace("T", " "))}</div><div>${esc(m.summary || "")}</div>` +
+        (m.followUps?.length ? `<div class="meta">next: ${esc(m.followUps.join("; "))}</div>` : "");
+      box.appendChild(card);
+    }
+  }
+  function showReport(msg) {
+    const when = new Date(msg.generatedAt || Date.now()).toLocaleString();
+    $("reportSlot").innerHTML = `<div class="report"><span aria-hidden="true">📄</span><span class="txt"><strong>Session statement ready</strong>Written by Scout ${esc(when)} — a neutral write-up to bring to a clinician.</span><a class="dl" href="${esc(msg.url)}" download>Download PDF</a></div>`;
+  }
+
+  // ---------- Scout activity (trajectory) ----------
+  function onRun(msg) {
+    if (msg.op === "start") {
+      runs.set(msg.run.id, { ...msg.run, steps: [...(msg.run.steps || [])] });
+      runOrder.push(msg.run.id);
+      while (runOrder.length > 8) runs.delete(runOrder.shift());
+      if (currentTab !== "activity") showTab("activity");
+      if (getComputedStyle($("asideToggle")).display !== "none" && !$("aside").classList.contains("open")) $("asideBadge").hidden = false;
+    } else if (msg.op === "end") {
+      const r = runs.get(msg.runId); if (!r) return;
+      r.status = msg.status; r.summary = msg.summary; r.endedAt = Date.now();
+      for (const s of r.steps) if (s.status === "active") s.status = msg.status === "error" ? "error" : "done";
+    }
+    renderRuns();
+  }
+  let traceFrame = 0;
+  function onTrace(msg) {
+    const r = runs.get(msg.runId); if (!r) return;
+    if (msg.op === "add") r.steps.push({ ...msg.step });
+    else if (msg.op === "update") { const s = r.steps.find((x) => x.id === msg.id); if (s) Object.assign(s, msg.patch); }
+    else if (msg.op === "append") {
+      const s = r.steps.find((x) => x.id === msg.id);
+      if (s) {
+        s.text = (s.text || "") + msg.text;
+        // Fast path: append into the live box without re-rendering everything.
+        const box = document.querySelector(`[data-think="${CSS.escape(r.id + ":" + s.id)}"]`);
+        if (box) { box.textContent = s.text; box.scrollTop = box.scrollHeight; return; }
+      }
+    }
+    cancelAnimationFrame(traceFrame);
+    traceFrame = requestAnimationFrame(renderRuns);
+  }
+
+  const ICON = { start: "◎", thinking: "…", search: "⌕", read: "▤", note: "i", done: "✓", error: "!" };
+  const openThink = new Set();
+
+  function stepHtml(run, s) {
+    const cls = ["step", s.kind, s.status, s.kind === "done" ? "kind-done" : ""].join(" ");
+    let inner = `<div class="t">${esc(s.title || s.kind)}${s.model ? `<span class="mtag">${esc(s.model)}</span>` : ""}</div>`;
+    if (s.detail) inner += `<div class="d">${esc(s.detail)}</div>`;
+    if (s.kind === "search" && s.results?.length) {
+      inner += `<ul class="reslist">${s.results.slice(0, 6).map((r) => `<li><span class="dom">${esc(r.domain || domain(r.url))}</span><a href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.title)}</a></li>`).join("")}</ul>`;
+    }
+    if (s.kind === "read" && s.pages?.length) {
+      inner += `<ul class="reslist">${s.pages.map((p) => `<li class="${esc(p.status)}"><span class="dom">${esc(p.domain || domain(p.url))}</span><span>${p.status === "ok" ? `read · ${Number(p.chars || 0).toLocaleString()} chars${p.via === "Tavily" ? " · Tavily" : ""}` : p.status === "reading" ? "reading…" : esc(p.error || "failed")}</span></li>`).join("")}</ul>`;
+    }
+    if (s.kind === "thinking" && s.text) {
+      const key = run.id + ":" + s.id;
+      const open = s.status === "active" || openThink.has(key);
+      inner += `<div class="think ${open ? "" : "collapsed"}" data-think="${esc(key)}">${esc(s.text)}</div>`;
+      if (s.status !== "active") inner += `<button class="thinktoggle" data-toggle="${esc(key)}">${open ? "hide reasoning" : "show reasoning"}</button>`;
+    }
+    return `<li class="${cls}"><span class="ico">${ICON[s.kind] || "·"}</span>${inner}</li>`;
+  }
+
+  function renderRuns() {
+    const box = $("runs");
+    const active = runOrder.some((id) => runs.get(id)?.status === "active");
+    $("liveDot").hidden = !active;
+    if (!runOrder.length) {
+      box.innerHTML = `<div class="empty"><div class="big">Scout is standing by</div>When the conversation turns to games, getting assessed, or prices, Scout searches the web in the background. Every search, page and thought shows up here as it happens.</div>`;
+      return;
+    }
+    const openState = new Map([...box.querySelectorAll("details.run")].map((d) => [d.dataset.id, d.open]));
+    const scrolls = new Map([...box.querySelectorAll("[data-think]")].map((d) => [d.dataset.think, d.scrollTop]));
+    box.innerHTML = [...runOrder].reverse().map((id, idx) => {
+      const r = runs.get(id);
+      const open = openState.has(id) ? openState.get(id) : r.status === "active" || idx === 0;
+      const when = new Date(r.startedAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const sub = r.status === "active" ? (r.detail || "working…") : (r.summary || r.detail || "");
+      return `<details class="run ${esc(r.status)}" data-id="${esc(id)}" ${open ? "open" : ""}>
+        <summary><span class="rstate ${r.status === "active" ? "spin" : ""}">${r.status === "active" ? "" : r.status === "error" ? "!" : "✓"}</span>
+          <span class="rtitle"><b>${esc(r.title)}</b><span>${esc(sub)}</span></span><time>${esc(when)}</time></summary>
+        <ol class="steps">${(r.steps || []).map((s) => stepHtml(r, s)).join("")}</ol>
+      </details>`;
+    }).join("");
+    for (const el of box.querySelectorAll("[data-think]")) {
+      const prev = scrolls.get(el.dataset.think);
+      el.scrollTop = prev != null && !el.closest(".step.active") ? prev : el.scrollHeight;
+    }
+    for (const b of box.querySelectorAll("[data-toggle]")) {
+      b.onclick = (e) => { e.preventDefault(); const k = b.dataset.toggle; openThink.has(k) ? openThink.delete(k) : openThink.add(k); renderRuns(); };
+    }
+  }
+
+  // ---------- composer ----------
+  const form = $("form"), input = $("input");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    if (!hasGroq()) { showGate("key"); return; }
+    if (!ws || ws.readyState !== 1) { addSystem("Not connected right now — reconnecting. Your message wasn't sent."); return; }
+    addUser(text);
+    sendWs({ type: "user_message", text });
+    input.value = ""; input.style.height = "auto";
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+  input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 144) + "px"; });
+
+  const guard = () => { if (hasGroq()) return true; showGate("key"); return false; };
+  $("statement").onclick = () => { if (!guard()) return; addSystem("Asking Scout to write up this session as a professional statement…"); sendWs({ type: "request_statement" }); };
+  $("endSession").onclick = () => { if (!guard()) return; addSystem("Asking Scout to save this session to memory and write your statement…"); sendWs({ type: "end_session" }); };
+  function askScout(query, task, label) { if (!guard()) return; addUser(label); sendWs({ type: "request_research", query, task }); }
+  $("askScout").onclick = () => { const q = prompt("What should Scout look into?"); if (q && q.trim()) askScout(q.trim(), undefined, "(to Scout) " + q.trim()); };
+  $("askClinician").onclick = () => {
+    const where = prompt("Which country or city should Scout look at? Health systems differ, so this matters.");
+    if (where && where.trim()) askScout(`How to get an ADHD assessment in ${where.trim()} — routes to care, directories and professional registers, typical costs and waits`, "clinicians", `(to Scout) How do I get assessed in ${where.trim()}?`);
+  };
+  $("askDeals").onclick = () => askScout("Current pricing, trials, discounts and insurance/FSA/HSA coverage for EndeavorOTC and EndeavorRx", "deals", "(to Scout) What do these cost, and is any of it covered?");
+
+  // ---------- profile ----------
+  function renderProfileChip() {
+    $("chipAvatar").textContent = profile.avatarEmoji || "🌱";
+    $("chipAvatar").style.background = profile.avatarColor || "var(--doctor)";
+    $("chipName").textContent = profile.nickname || "Settings";
+    $("profileChip").classList.toggle("warn", Boolean(agentProblem.doctor?.needsKey || agentProblem.scout?.needsKey));
+  }
+
+  // One icon picker, used by both the first-run card and Settings.
+  let draftProfile = null;
+  function renderIconPickers(where) {
+    const target = where === "gate" ? profile : draftProfile;
+    const grid = $(where === "gate" ? "gateEmoji" : "profileEmoji");
+    const colors = $(where === "gate" ? "gateColors" : "profileColors");
+    const preview = $(where === "gate" ? "gatePreview" : "profilePreview");
+    const choices = meta?.avatars || { emoji: ["🌱", "🍁", "🦊", "🐢", "🌙", "⚓", "🧭"], colors: ["#0e7f74", "#a4551e", "#4a5d8a"] };
+    preview.textContent = target.avatarEmoji; preview.style.background = target.avatarColor;
+    grid.innerHTML = ""; colors.innerHTML = "";
+    for (const e of choices.emoji) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "avatarbtn" + (e === target.avatarEmoji ? " on" : ""); b.textContent = e; b.setAttribute("aria-label", "Icon " + e);
+      b.onclick = () => { target.avatarEmoji = e; renderIconPickers(where); };
+      grid.appendChild(b);
+    }
+    for (const c of choices.colors) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "colorbtn" + (c === target.avatarColor ? " on" : ""); b.style.background = c; b.setAttribute("aria-label", "Color " + c);
+      b.onclick = () => { target.avatarColor = c; renderIconPickers(where); };
+      colors.appendChild(b);
+    }
+  }
+
+  // ---------- settings drawer ----------
+  async function loadMeta() {
+    try { meta = await fetch("/api/meta").then((r) => r.json()); serverKeys = meta.serverKeys || serverKeys; } catch { meta = meta || null; }
+  }
+
+  async function openDrawer() {
+    if (!meta) await loadMeta();
+    draftProfile = { ...profile };
+    $("profileName").value = profile.nickname || "";
+    $("profileNote").textContent = "The agents call you by this name now and then. Saved in this browser only.";
+    renderIconPickers("drawer");
+    const keys = loadKeys();
+    $("groqKey").value = keys.groq || "";
+    $("tavilyKey").value = keys.tavily || "";
+    $("groqKey").placeholder = serverKeys.groq ? "using the server's key — paste one to override" : "gsk_…";
+    $("tavilyKey").placeholder = serverKeys.tavily ? "using the server's key — paste one to override" : "tvly-…";
+    $("groqResult").hidden = true; $("tavilyResult").hidden = true;
+    renderKeyPills(); renderConnRows(); renderModels();
+    $("drawer").hidden = false; $("backdrop").hidden = false; document.body.style.overflow = "hidden";
+    sendWs({ type: "get_status" });
+  }
+  function closeDrawer() { $("drawer").hidden = true; $("backdrop").hidden = true; document.body.style.overflow = ""; }
+  $("profileChip").onclick = openDrawer;
+  $("drawerClose").onclick = closeDrawer;
+  $("backdrop").onclick = closeDrawer;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+
+  function renderKeyPills() {
+    const keys = loadKeys();
+    const g = $("groqPill");
+    g.textContent = keys.groq ? "this browser" : serverKeys.groq ? "server key" : "not set";
+    g.className = "pill " + (keys.groq || serverKeys.groq ? "ok" : "bad");
+    const t = $("tavilyPill");
+    t.textContent = keys.tavily ? "Tavily · this browser" : serverKeys.tavily ? "Tavily · server key" : "DuckDuckGo (no key)";
+    t.className = "pill " + (keys.tavily || serverKeys.tavily ? "ok" : "");
+  }
+
+  for (const [btn, field] of [["groqShow", "groqKey"], ["tavilyShow", "tavilyKey"]]) {
+    $(btn).onclick = () => { const f = $(field); f.type = f.type === "password" ? "text" : "password"; $(btn).textContent = f.type === "password" ? "Show" : "Hide"; };
+  }
+
+  function showResult(id, cls, html) { const el = $(id); el.hidden = false; el.className = "result " + cls; el.innerHTML = html; }
+
+  $("groqTest").onclick = async () => {
+    const key = $("groqKey").value.trim();
+    if (!key && !serverKeys.groq) { showResult("groqResult", "bad", "Paste a key first."); return; }
+    $("groqTest").disabled = true; showResult("groqResult", "", "Testing…");
+    try {
+      const r = await testGroq(key);
+      lastGroqTest = r;
+      if (!r.ok) { showResult("groqResult", "bad", `✕ ${esc(r.error)}${r.hint ? `<br>${esc(r.hint)}` : ""}`); return; }
+      const retired = r.models.filter((m) => m.retired).map((m) => m.id);
+      showResult("groqResult", retired.length ? "warnbox" : "ok",
+        `✓ Key works${r.source === "server" ? " (server key)" : ""} · ${r.usable} free model${r.usable === 1 ? "" : "s"} ready · ${r.latencyMs} ms` +
+        (retired.length ? `<br>Groq no longer offers: ${esc(retired.join(", "))}. Focus Room skips them.` : ""));
+      renderConnRows();
+    } catch (err) { showResult("groqResult", "bad", "Couldn't reach the Focus Room server: " + esc(err.message)); }
+    finally { $("groqTest").disabled = false; }
+  };
+
+  $("tavilyTest").onclick = async () => {
+    const key = $("tavilyKey").value.trim();
+    if (!key && !serverKeys.tavily) { showResult("tavilyResult", "bad", "Paste a Tavily key first, or leave it empty to use DuckDuckGo."); return; }
+    $("tavilyTest").disabled = true; showResult("tavilyResult", "", "Testing — this runs one search (1 credit)…");
+    try {
+      const r = await fetch("/api/tavily/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, search: true }) }).then((x) => x.json());
+      if (!r.ok) { showResult("tavilyResult", "bad", `✕ ${esc(r.error)}`); return; }
+      showResult("tavilyResult", r.exhausted || r.paygo ? "warnbox" : "ok", tavilySummary(r) + (r.search ? `<br>Test search: ${r.search.results.length} results in ${r.search.latencyMs} ms — “${esc(r.search.results[0]?.title || "")}”` : ""));
+    } catch (err) { showResult("tavilyResult", "bad", "Couldn't reach the Focus Room server: " + esc(err.message)); }
+    finally { $("tavilyTest").disabled = false; }
+  };
+
+  function tavilySummary(r) {
+    const u = r.usage;
+    let s = `✓ Tavily key works${r.source === "server" ? " (server key)" : ""}`;
+    if (u) {
+      const used = u.planUsage ?? u.keyUsage, limit = u.planLimit ?? u.keyLimit;
+      if (used != null && limit) s += ` · ${used.toLocaleString()} / ${limit.toLocaleString()} credits used this month`;
+      if (u.plan) s += ` · plan: ${esc(u.plan)}`;
+    }
+    if (r.exhausted) s += "<br>This month's free credits are used up — Scout will use DuckDuckGo until they reset, so nothing is billed.";
+    else if (r.paygo) s += "<br>Heads up: pay-as-you-go is switched on for this Tavily account. Focus Room stops using Tavily when the free credits run out, so it won't bill — but other apps using this key could.";
+    return s;
+  }
+  function renderTavilyFromStatus() {
+    const t = lastStatus?.tavily;
+    if (!t || $("drawer").hidden || !t.usage || !$("tavilyResult").hidden) return;
+    showResult("tavilyResult", t.exhausted || t.paygo ? "warnbox" : "ok", tavilySummary({ ok: true, usage: t.usage, exhausted: t.exhausted, paygo: t.paygo, source: t.source }));
+  }
+
+  function renderConnRows() {
+    const box = $("connRows"); if (!box) return;
+    const rows = [];
+    rows.push([wsState === "online" ? "ok" : wsState === "connecting" ? "warn" : "bad", "Live link", wsState === "online" ? "Connected to the Focus Room server" : wsState === "connecting" ? "Connecting…" : "Offline — retrying automatically"]);
+    const sv = lastStatus?.server;
+    rows.push([sv ? "ok" : lastServerPing === false ? "bad" : "", "Server", sv ? `Focus Room ${sv.version} · up ${fmtMs(sv.uptimeSec * 1000)} · memory ${sv.memory === "local" ? "on (this server)" : "off"}` : lastServerPing === false ? "Not answering" : "—"]);
+    const g = lastGroqTest;
+    const src = loadKeys().groq ? "this browser" : serverKeys.groq ? "server" : "none";
+    rows.push([g ? (g.ok ? "ok" : "bad") : src === "none" ? "bad" : "", "Groq", g ? (g.ok ? `Reachable · ${g.latencyMs} ms · key ${esc(g.masked || "")} (${src})` : esc(g.error)) : src === "none" ? "No key yet" : `Key from ${src} — press Run checks`]);
+    const keys = loadKeys();
+    rows.push([keys.tavily || serverKeys.tavily ? "ok" : "warn", "Web search", keys.tavily || serverKeys.tavily ? "Tavily (with DuckDuckGo as backup)" : "DuckDuckGo only — add a Tavily key for reliable search"]);
+    box.innerHTML = rows.map(([cls, l, v]) => `<div class="srow ${cls}"><span class="sdot"></span><span class="sl">${esc(l)}</span><span class="sv">${v}</span></div>`).join("");
+  }
+
+  $("connCheck").onclick = async () => {
+    $("connCheck").disabled = true;
+    try {
+      const t0 = performance.now();
+      const h = await fetch("/health").then((r) => r.json());
+      lastServerPing = h.ok === true;
+      lastStatus = { ...(lastStatus || {}), server: { version: h.version, uptimeSec: h.uptimeSec, memory: h.memory, latency: Math.round(performance.now() - t0) } };
+    } catch { lastServerPing = false; }
+    if (loadKeys().groq || serverKeys.groq) { try { lastGroqTest = await testGroq(loadKeys().groq || ""); } catch {} }
+    sendWs({ type: "get_status" });
+    renderConnRows();
+    $("connCheck").disabled = false;
+  };
+
+  function renderModels() {
+    const pick = $("agentPick"); if (!pick || !meta) return;
+    const models = meta.models || [];
+    const chosen = { ...(serverConfig?.models || {}), ...loadModels() };
+    pick.innerHTML = "";
+    for (const a of [{ id: "doctor", name: "Dr. Maple" }, { id: "scout", name: "Scout" }]) {
+      const label = document.createElement("span"); label.textContent = a.name; label.style.fontWeight = "600";
+      const sel = document.createElement("select"); sel.id = "model-" + a.id;
+      sel.innerHTML = models.map((m) => `<option value="${esc(m.id)}" ${m.id === chosen[a.id] ? "selected" : ""} ${m.retired ? "disabled" : ""}>${esc(m.label)}${m.retired ? " (retired)" : ""}</option>`).join("");
+      const chain = document.createElement("span"); chain.className = "chain";
+      const order = serverConfig?.chains?.[a.id] || [];
+      chain.textContent = order.length ? "then: " + order.slice(1).map(modelLabel).join(" → ") : "";
+      pick.append(label, sel, chain);
+    }
+    const table = $("quotaTable");
+    const rows = models.map((m) => {
+      const q = quota.find((x) => x.model === m.id) || {};
+      const req = q.limitRequests ? `${(q.remainingRequests ?? 0).toLocaleString()} / ${q.limitRequests.toLocaleString()}` : "—";
+      const tok = q.limitTokens ? `${(q.remainingTokens ?? 0).toLocaleString()} / ${q.limitTokens.toLocaleString()}` : "—";
+      const pct = q.limitRequests ? Math.max(0, Math.min(100, (100 * (q.remainingRequests ?? 0)) / q.limitRequests)) : 0;
+      const state = m.retired ? "retired" : q.coolingDownForMs ? `resting ${fmtMs(q.coolingDownForMs)}` : q.known ? "ready" : "not used yet";
+      return `<tr><td class="m">${esc(m.label)}</td><td>${req}${q.limitRequests ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}</td><td>${tok}</td><td>${esc(state)}</td></tr>`;
+    }).join("");
+    table.innerHTML = `<tr><th>Model</th><th>Requests left today</th><th>Tokens this minute</th><th>Status</th></tr>${rows}`;
+    const pill = $("planPill"), note = $("planNote");
+    if (plan === "free") { pill.textContent = "Free plan"; pill.className = "pill ok"; note.textContent = "Groq reports Free plan limits (1,000 requests a day per model), so nothing can be billed. When a model runs low, the agent moves to the next one."; }
+    else if (plan === "higher") { pill.textContent = "check plan"; pill.className = "pill bad"; note.textContent = "Groq reports higher limits than the Free plan, so this key may belong to a paid Developer account. Focus Room still only calls the free-listed models, but on a paid plan Groq can bill for them. Check console.groq.com/settings/billing."; }
+    else { pill.textContent = "free models only"; pill.className = "pill"; note.textContent = "Each free model has its own allowance: 1,000 requests a day and 8,000 tokens a minute. Numbers appear after the first reply, or press Refresh."; }
+  }
+
+  $("quotaProbe").onclick = async () => {
+    $("quotaProbe").disabled = true;
+    try { const r = await testGroq(loadKeys().groq || "", { probe: true }); lastGroqTest = r; if (r.ok) { quota = r.quota; plan = r.plan; } renderModels(); renderConnRows(); }
+    catch {} finally { $("quotaProbe").disabled = false; }
+  };
+
+  $("settingsSave").onclick = () => {
+    // Profile
+    const name = $("profileName").value.trim();
+    if (/^(dr\.? ?maple|maple|scout)$/i.test(name)) { $("profileNote").textContent = "That's one of the agents — pick something else."; return; }
+    profile = { ...draftProfile, nickname: name, setupDone: true };
+    store.set(K_PROFILE, profile);
+    // Keys
+    const keys = { groq: $("groqKey").value.trim(), tavily: $("tavilyKey").value.trim() };
+    if (keys.groq && !keys.groq.startsWith("gsk_")) { showResult("groqResult", "bad", "Groq keys start with gsk_."); return; }
+    if (keys.tavily && !keys.tavily.startsWith("tvly-")) { showResult("tavilyResult", "bad", "Tavily keys start with tvly-."); return; }
+    store.set(K_KEYS, Object.fromEntries(Object.entries(keys).filter(([, v]) => v)));
+    // Models
+    const models = {};
+    for (const a of ["doctor", "scout"]) { const sel = $("model-" + a); if (sel) models[a] = sel.value; }
+    store.set(K_MODELS, models);
+
+    pushProfile(); pushConfig({ retry: Boolean(agentProblem.doctor) });
+    delete agentProblem.doctor; delete agentProblem.scout;
+    renderProfileChip(); refreshUserBadges(); renderPresence();
+    closeDrawer();
+    if (!hasGroq()) showGate("key");
+  };
+
+  $("keysClear").onclick = () => {
+    if (!confirm("Remove the Groq and Tavily keys saved in this browser?")) return;
+    store.set(K_KEYS, null);
+    $("groqKey").value = ""; $("tavilyKey").value = "";
+    pushConfig(); renderKeyPills(); renderConnRows();
+    if (!serverKeys.groq) { closeDrawer(); showGate("key"); }
+  };
+
+  // ---------- start ----------
+  renderProfileChip();
+  renderRuns();
+  loadMeta().finally(connect);
+})();
+</script>
+</body>
+</html>

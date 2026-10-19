@@ -1,0 +1,22 @@
+[
+  {
+    "name": "EndeavorRx",
+    "audience": "children 8-17",
+    "access": "prescription-only",
+    "platform": "iOS / Android",
+    "description": "A prescription video game for ADHD that targets attention function in children, used on its own or alongside other treatment.",
+    "evidence": "FDA-authorized (2020) prescription digital therapeutic for children 8-17 with ADHD.",
+    "url": "https://www.endeavorrx.com",
+    "savedAt": "seed"
+  },
+  {
+    "name": "EndeavorOTC",
+    "audience": "adults 18+",
+    "access": "over-the-counter",
+    "platform": "iOS / Android",
+    "description": "The adult version of the Endeavor attention-training game, available without a prescription via subscription.",
+    "evidence": "FDA-authorized (2025) over-the-counter digital therapeutic for adults with ADHD.",
+    "url": "https://www.endeavorotc.com",
+    "savedAt": "seed"
+  }
+]

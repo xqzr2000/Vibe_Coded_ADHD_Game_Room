@@ -1,0 +1,12 @@
+node_modules/
+.env
+
+# Runtime logs and PID file from the start scripts. Kept out of .devcontainer/
+# on purpose: the Dev Containers extension watches that folder.
+.logs/
+.focus-room.pid
+
+# Personal data written at runtime. Session summaries describe someone's
+# screening conversation — never commit them.
+data/memories.json
+data/*.tmp

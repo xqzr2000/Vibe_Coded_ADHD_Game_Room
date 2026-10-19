@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings, or bash fails with "\r: command not found"
+# after a checkout on Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.py text eol=lf
