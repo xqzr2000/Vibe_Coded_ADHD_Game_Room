@@ -148,28 +148,3 @@ Tests need no network or real keys: `tests/mock-services.mjs` stands in for Groq
 
 Container-specific problems (recovery mode, rebuild prompts): see `.devcontainer/README.md`.
 
-## Project shape
-
-```text
-public/index.html              browser UI: chat, streaming bubbles, Scout activity, settings
-server/start.js                entry point: Node/dependency checks, then index.js
-server/index.js                HTTP + WebSocket gateway, sessions, orchestration
-server/models.js               free-model allowlist, per-agent chains
-server/llm.js                  Groq client: streaming, reasoning, error classification
-server/fallback.js             free-model fallback with quota-aware skipping
-server/quota.js                Groq rate-limit header tracking, plan detection
-server/context.js              prompt trimming for the 8K tokens/minute limit
-server/agents/doctor.js        Dr. Maple (streamed)
-server/agents/researcher.js    Scout: tool-calling search loop + trajectory
-server/agents/scout-tasks.js   games / clinicians / deals task definitions
-server/search/                 Tavily, DuckDuckGo, backend selection
-server/fetcher.js              plain page reader (refuses local/private addresses)
-server/profile.js              name + icon validation
-server/diagnose.js             key and connection checks for Settings
-data/                          games library (shared) and memories (personal, git-ignored)
-tests/                         unit, integration and end-to-end tests + mock services
-```
-
-## License
-
-MIT
